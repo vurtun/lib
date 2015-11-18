@@ -4,7 +4,7 @@ mmx
 My single-file public domain libraries for C/C++.
 
 |library | lastest version | category | LoC | license | description
-|--------------------- |: ---- :|: -------- :|: --- :|: --------------------------------
+| --------------------- | ---- | -------- | --- | --- | --------------------------------
 |**mm_json.h** | 1.00 | parser | 850 | zlib | JSON-Parser  
 |**mm_lexer.h** | 1.00 | parser | 1165 | zlib | simple lexer/tokenzier for C-like languages  
 |**mm_sched.h** | 1.00 | multithreading | 680 | zlib | cross-platform multithreaded task scheduler  
