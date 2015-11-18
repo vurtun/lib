@@ -5,16 +5,16 @@ My single-file public domain libraries for C/C++.
 
 |library | lastest version | category | LoC | license | description
 | --------------------- | ---- | -------- | --- | --- | --------------------------------
-|**mm_json.h** | 1.00 | parser | 850 | zlib | JSON-Parser  
-|**mm_lexer.h** | 1.00 | parser | 1165 | zlib | simple lexer/tokenzier for C-like languages  
-|**mm_sched.h** | 1.00 | multithreading | 680 | zlib | cross-platform multithreaded task scheduler  
-|**mm_vec.h** | 1.00 | math | 1503 | zlib | vector/matrix/plane/sphere/AABB math  
+|**mm_json.h** | 1.00 | parser | 850 | zlib | JSON-Parser
+|**mm_lexer.h** | 1.00 | parser | 1165 | zlib | simple lexer for C-like languages
+|**mm_sched.h** | 1.00 | multithreading | 680 | zlib | cross-platform multithreaded task scheduler
+|**mm_vec.h** | 1.00 | math | 1503 | zlib | vector/matrix/plane/sphere/AABB math
 |**mm_web.h** | 1.00 | network | 1466 | BSD |  lightweight webserver
 
 Total libraries: 5  
 Total lines of C code: 5664
 
-FAQ
+##FAQ
 ---
 #### Why single-file headers?
 Windows doesn't have standard directories where libraries
@@ -38,12 +38,12 @@ but the difference between 2 files and 1 file is a big deal.
 You don't need to zip or tar the files up, you don't have to
 remember to attach *two* files, etc.
 
-#### Where is the documentation
+#### Where is the documentation?
 Each file has documentation, basic ussage description and
 examples at the top of the file. In addition each API function,
 struct and member variables are documented was well.
 Finally each library has a corresponding test file inside the
-test order for addition working examples.
+test directy for additional working examples.
 
 #### Why C?
 Personally I primarily use C instead of C++ and since I want to
@@ -54,7 +54,7 @@ on C.
 I use C89 instead of C99/C11 for its portability between different compilers
 and accessiblity for other languages.
 
-References
+##References
 - [Sean Barretts single header libraries](https://github.com/nothings/stb)
 - [Other single header libraries](https://github.com/nothings/stb/blob/master/docs/other_libs.md)
 - [enkiTS: source implemenation for mm_sched.h](https://github.com/dougbinks/enkiTS)
