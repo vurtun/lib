@@ -23,31 +23,31 @@
 
 #define UNUSED(x) ((void)x)
 
-#define MTS_STATIC
-#define MTS_IMPLEMENTATION
-#define MTS_USE_FIXED_TYPES
-#define MTS_USE_ASSERT
-#include "mts.h"
+#define MMS_STATIC
+#define MMS_IMPLEMENTATION
+#define MMS_USE_FIXED_TYPES
+#define MMS_USE_ASSERT
+#include "../mm_sched.h"
 
 struct parallel_sum_args {
-    mts_ulong *partial_sums;
-    mts_uint parital_sum_num;
+    mms_ulong *partial_sums;
+    mms_uint parital_sum_num;
 };
 
 static struct parallel_sum_args
-parallel_sum_arg(mts_uint partial_sums)
+parallel_sum_arg(mms_uint partial_sums)
 {
     struct parallel_sum_args args;
     args.parital_sum_num = partial_sums;
-    args.partial_sums = (mts_ulong*)calloc(sizeof(mts_ulong), args.parital_sum_num);
+    args.partial_sums = (mms_ulong*)calloc(sizeof(mms_ulong), args.parital_sum_num);
     assert(args.partial_sums);
     return args;
 }
 
 static void
-parallel_sum(void *pArgs, struct mts_scheduler *ts, mts_uint start, mts_uint end, mts_uint thread_num)
+parallel_sum(void *pArgs, struct mms_scheduler *ts, mms_uint start, mms_uint end, mms_uint thread_num)
 {
-    mts_ulong sum = 0, i = 0;
+    mms_ulong sum = 0, i = 0;
     struct parallel_sum_args args;
     UNUSED(ts);
     args = *(struct parallel_sum_args*)pArgs;
@@ -58,52 +58,52 @@ parallel_sum(void *pArgs, struct mts_scheduler *ts, mts_uint start, mts_uint end
 }
 
 static void
-parallel_reduction_sum(void *pArgs, struct mts_scheduler *ts, mts_uint start, mts_uint end, mts_uint thread_num)
+parallel_reduction_sum(void *pArgs, struct mms_scheduler *ts, mms_uint start, mms_uint end, mms_uint thread_num)
 {
-    mts_ulong sum = 0, in_max_sum, i = 0;
+    mms_ulong sum = 0, in_max_sum, i = 0;
     struct parallel_sum_args args = parallel_sum_arg(ts->partitions_num);
     UNUSED(start); UNUSED(end); UNUSED(thread_num);
-    in_max_sum = *(mts_ulong*)pArgs;
+    in_max_sum = *(mms_ulong*)pArgs;
     {
-        struct mts_task task;
-        mts_scheduler_add(&task, ts, parallel_sum, &args, (mts_uint)in_max_sum);
-        mts_scheduler_join(ts, &task);
+        struct mms_task task;
+        mms_scheduler_add(&task, ts, parallel_sum, &args, (mms_uint)in_max_sum);
+        mms_scheduler_join(ts, &task);
     }
     for (i = 0; i < args.parital_sum_num; ++i)
         sum += args.partial_sums[i];
     free(args.partial_sums);
-    *(mts_ulong*)pArgs = sum;
+    *(mms_ulong*)pArgs = sum;
 }
 
 int
 main(void)
 {
     void *memory;
-    mts_size needed_memory;
+    mms_size needed_memory;
 
-    struct mts_scheduler ts;
-    mts_scheduler_init(&ts, &needed_memory, MTS_DEFAULT, NULL);
+    struct mms_scheduler ts;
+    mms_scheduler_init(&ts, &needed_memory, MMS_DEFAULT, NULL);
     memory = calloc(needed_memory, 1);
     assert(memory);
-    mts_scheduler_start(&ts, memory);
+    mms_scheduler_start(&ts, memory);
     {
-        mts_ulong serial_sum = 0;
-        mts_ulong max = 10 * 1024 * 1024;
-        mts_ulong in_max_sum = max;
+        mms_ulong serial_sum = 0;
+        mms_ulong max = 10 * 1024 * 1024;
+        mms_ulong in_max_sum = max;
 
-        struct mts_task task;
-        mts_scheduler_add(&task, &ts, parallel_reduction_sum, &in_max_sum, 1);
-        mts_scheduler_join(&ts, &task);
+        struct mms_task task;
+        mms_scheduler_add(&task, &ts, parallel_reduction_sum, &in_max_sum, 1);
+        mms_scheduler_join(&ts, &task);
 
         fprintf(stdout, "Parallel complete sum:\t%lu\n", in_max_sum);
         {
-            mts_ulong i = 0;
+            mms_ulong i = 0;
             for (i = 0; i < max; ++i)
                 serial_sum += i + 1;
         }
         fprintf(stdout, "Serial Example complete sum:\t%lu\n", serial_sum);
     }
-    mts_scheduler_stop(&ts);
+    mms_scheduler_stop(&ts);
     free(memory);
     return 0;
 }
