@@ -78,13 +78,14 @@ EXAMPLES:*/
     static void parallel_task(void *pArg, struct mms_scheduler *s, mms_uint begin, mms_uint end, mms_uint thread) {
         /* Do something here, cann issue additional tasks into the scheduler */
     }
+
     int main(int argc, const char **argv)
     {
         void *memory;
         mms_size needed_memory;
 
         struct mms_scheduler sched;
-        mms_init(&sched, &needed_memory, MMS_DEFAULT, 0);
+        mms_scheduler_init(&sched, &needed_memory, MMS_DEFAULT, 0);
         memory = calloc(needed_memory, 1);
         mms_scheduler_start(&sched, memory);
         {
