@@ -95,43 +95,43 @@ LIMITATIONS:
 EXAMPLES:*/
 #if 0
     /* initialize lexer */
-    struct lxr_context lexer;
-    lxr_init(&lexer, text, text_length, NULL, test_log, NULL);
+    struct mml_context lexer;
+    mml_init(&lexer, text, text_length, NULL, test_log, NULL);
 
     /* parse tokens */
-    lxr_read(&lexer, &tok);
-    lxr_expect_string(&lexer, "string");
-    lxr_expect_type(&lexer, LXR_TOKEN_NUMBER, LXR_TOKEN_HEX, &tok);
-    lxr_expect_any(&lexer, &tok);
+    mml_read(&lexer, &tok);
+    mml_expect_string(&lexer, "string");
+    mml_expect_type(&lexer, LXR_TOKEN_NUMBER, LXR_TOKEN_HEX, &tok);
+    mml_expect_any(&lexer, &tok);
 
     /* check and parse only if correct */
-    if (lxr_check_string(&lexer, "string"))
+    if (mml_check_string(&lexer, "string"))
         /* correct string  */
-    if (lxr_check_type(&lexer, LXR_TOKEN_NUMBER, LXR_TOKEN_BIN, &tok))
+    if (mml_check_type(&lexer, LXR_TOKEN_NUMBER, LXR_TOKEN_BIN, &tok))
         /* correct type */
 
     /* only check but don't parse */
-    if (lxr_peek_string(&lexer, "string"))
+    if (mml_peek_string(&lexer, "string"))
         /* correct string  */
-    if (lxr_peek_type(&lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_DOLLAR, &tok))
+    if (mml_peek_type(&lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_DOLLAR, &tok))
         /* correct type */
 
     /* token compare function */
-    if (!lxr_token_cmp(&tok, "string"))
+    if (!mml_token_cmp(&tok, "string"))
         /* token holds string 'string' */
-    if (!lxr_token_icmp(&tok, "string"))
+    if (!mml_token_icmp(&tok, "string"))
         /* token holds case independent string 'string' */
 
     /* copy token content into buffer */
     char buffer[1024]
-    lxr_token_cpy(buffer, 1024, &tok);
+    mml_token_cpy(buffer, 1024, &tok);
 
     /* token to number conversion */
     /* You should always check if the token (sub)type is correct */
-    lxr_int i = lxr_token_to_int(&tok);
-    lxr_float f = lxr_token_to_float(&tok);
-    lxr_double d = lxr_token_to_double(&tok);
-    lxr_ulong ul = lxr_token_to_unsigned_long(&tok);
+    mml_int i = mml_token_to_int(&tok);
+    mml_float f = mml_token_to_float(&tok);
+    mml_double d = mml_token_to_double(&tok);
+    mml_ulong ul = mml_token_to_unsigned_long(&tok);
 #endif
 
  /* ===============================================================
