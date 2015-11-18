@@ -86,7 +86,7 @@ LIMITATIONS:
     Unicode
         This lexer does not work with unicode character in any way or form.
         I personally do not use non-ASCII characters and C does not require
-        and unicode support.
+        unicode support.
 
     Error handling
         At the moment there is a error flag and a logging function to check for
