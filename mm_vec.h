@@ -37,6 +37,8 @@ DEFINES:
     #define MMX_ATAN2 your_atan2
     #define MMX_SQRT your_sqrt
 
+    In addition if you want a higher precision PI value provide
+    #define MMX_PI YOUR_HIGH_PRECICISION_PI
 
 LICENSE: (zlib)
     Copyright (c) 2015 Micha Mettke
@@ -107,38 +109,6 @@ typedef int mmx_int;
 typedef unsigned int mmx_uint;
 typedef unsigned char mmx_byte;
 typedef unsigned long mmx_size;
-#endif
-
-#ifndef MMX_SIN
-#define MMX_SIN sin
-#endif
-
-#ifndef MMX_FABS
-#define MMX_FABS fabs
-#endif
-
-#ifndef MMX_COS
-#define MMX_COS cos
-#endif
-
-#ifndef MMX_TAN
-#define MMX_TAN tan
-#endif
-
-#ifndef MMX_ACOS
-#define MMX_ACOS acos
-#endif
-
-#ifndef MMX_ATAN2
-#define MMX_ATAN2 atan2
-#endif
-
-#ifndef MMX_SQRT
-#define MMX_SQRT sqrt
-#endif
-
-#ifndef MMX_PI
-#define MMX_PI 3.141592654f
 #endif
 
 /* ---------------------------------------------------------------
@@ -496,6 +466,39 @@ template<typename T> struct xv_alignof{struct Big {T x; char c;}; enum {
     (MMX_UINT_TO_PTR((XV_PTR_TO_UINT((mmx_byte*)(x) + (mask-1)) & XV_PTR_TO_UINT(~(mask-1)))))
 #define MMX_ALIGN_PTR_BACK(x, mask)\
     (MMX_UINT_TO_PTR((XV_PTR_TO_UINT((mmx_byte*)(x)) & ~(mask-1))))
+
+
+#ifndef MMX_SIN
+#define MMX_SIN sin
+#endif
+
+#ifndef MMX_FABS
+#define MMX_FABS fabs
+#endif
+
+#ifndef MMX_COS
+#define MMX_COS cos
+#endif
+
+#ifndef MMX_TAN
+#define MMX_TAN tan
+#endif
+
+#ifndef MMX_ACOS
+#define MMX_ACOS acos
+#endif
+
+#ifndef MMX_ATAN2
+#define MMX_ATAN2 atan2
+#endif
+
+#ifndef MMX_SQRT
+#define MMX_SQRT sqrt
+#endif
+
+#ifndef MMX_PI
+#define MMX_PI 3.141592654f
+#endif
 
 /* ---------------------------------------------------------------
  *                          UTIL
