@@ -11,7 +11,7 @@ My single-file public domain libraries for C/C++.
 |**mm_vec.h** | 1.00 | math | 1503 | zlib | vector/matrix/plane/sphere/AABB math  
 |**mm_web.h** | 1.00 | network | 1466 | BSD |  lightweight webserver
 
-Total libraries: 5
+Total libraries: 5  
 Total lines of C code: 5664
 
 FAQ
@@ -37,6 +37,13 @@ The difference between 10 files and 9 files is not a big deal,
 but the difference between 2 files and 1 file is a big deal.
 You don't need to zip or tar the files up, you don't have to
 remember to attach *two* files, etc.
+
+#### Where is the documentation
+Each file has documentation, basic ussage description and
+examples at the top of the file. In addition each API function,
+struct and member variables are documented was well.
+Finally each library has a corresponding test file inside the
+test order for addition working examples.
 
 #### Why C?
 Personally I primarily use C instead of C++ and since I want to
