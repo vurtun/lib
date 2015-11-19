@@ -97,11 +97,6 @@ EXAMPLES:*/
         free(memory);
     }
 #endif
- /* ===============================================================
- *
- *                          HEADER
- *
- * =============================================================== */
 #ifndef MMS_H_
 #define MMS_H_
 
@@ -109,6 +104,11 @@ EXAMPLES:*/
 extern "C" {
 #endif
 
+ /* ===============================================================
+ *
+ *                          HEADER
+ *
+ * =============================================================== */
 #ifdef MMS_STATIC
 #define MMS_API static
 #else
@@ -708,6 +708,7 @@ mms_pipe_write(struct mms_pipe *pipe, const struct mms_subset_task *src)
      * writer, but should not be called by readers  */
     mms_uint actual_write;
     mms_uint write_index;
+    mms_uint num_in_pipe;
     MMS_ASSERT(pipe);
     MMS_ASSERT(src);
 
@@ -910,9 +911,9 @@ mms_scheduler_add(struct mms_task *task, struct mms_scheduler *s, mms_run func, 
     MMS_ASSERT(task);
     MMS_ASSERT(func);
 
-    task->exec = func;
     task->userdata = pArg;
-    task->size = MMS_MAX(size, 1);
+    task->exec = func;
+    task->size = size;
 
     subtask.task = task;
     subtask.partition.start = 0;
@@ -920,7 +921,7 @@ mms_scheduler_add(struct mms_task *task, struct mms_scheduler *s, mms_run func, 
     task->run_count = -1;
 
     /* divide task up and add to pipe */
-    range_to_run = task->size / s->partitions_num;
+    range_to_run = MMS_MAX(1, task->size / s->partitions_num);
     range_left = subtask.partition.end - subtask.partition.start;
     num_added = 0;
     while (range_left) {
@@ -992,10 +993,9 @@ mms_scheduler_stop(struct mms_scheduler *s)
     s->running = 0;
     mms_scheduler_wait(s);
     while (s->thread_running > 1) {
-        /* keep firing event to ensure all threads pick up state of running*/
+        /* keep firing event to ensure all threads pick uo state of running*/
         mms_event_signal(s->event);
     }
-
     for (i = 1; i < s->threads_num; ++i)
         mms_thread_term(((mms_thread*)(s->threads))[i]);
 

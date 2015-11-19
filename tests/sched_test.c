@@ -30,16 +30,16 @@
 #include "../mm_sched.h"
 
 struct parallel_sum_args {
-    mms_ulong *partial_sums;
-    mms_uint parital_sum_num;
+    unsigned long *partial_sums;
+    unsigned long parital_sum_num;
 };
 
 static struct parallel_sum_args
-parallel_sum_arg(mms_uint partial_sums)
+parallel_sum_arg(unsigned long partial_sums)
 {
     struct parallel_sum_args args;
     args.parital_sum_num = partial_sums;
-    args.partial_sums = (mms_ulong*)calloc(sizeof(mms_ulong), args.parital_sum_num);
+    args.partial_sums = (unsigned long*)calloc(sizeof(unsigned long), args.parital_sum_num);
     assert(args.partial_sums);
     return args;
 }
@@ -47,7 +47,7 @@ parallel_sum_arg(mms_uint partial_sums)
 static void
 parallel_sum(void *pArgs, struct mms_scheduler *ts, mms_uint start, mms_uint end, mms_uint thread_num)
 {
-    mms_ulong sum = 0, i = 0;
+    unsigned long sum = 0, i = 0;
     struct parallel_sum_args args;
     UNUSED(ts);
     args = *(struct parallel_sum_args*)pArgs;
@@ -60,26 +60,26 @@ parallel_sum(void *pArgs, struct mms_scheduler *ts, mms_uint start, mms_uint end
 static void
 parallel_reduction_sum(void *pArgs, struct mms_scheduler *ts, mms_uint start, mms_uint end, mms_uint thread_num)
 {
-    mms_ulong sum = 0, in_max_sum, i = 0;
+    unsigned long sum = 0, in_max_sum, i = 0;
     struct parallel_sum_args args = parallel_sum_arg(ts->partitions_num);
     UNUSED(start); UNUSED(end); UNUSED(thread_num);
-    in_max_sum = *(mms_ulong*)pArgs;
+    in_max_sum = *(unsigned long*)pArgs;
     {
         struct mms_task task;
-        mms_scheduler_add(&task, ts, parallel_sum, &args, (mms_uint)in_max_sum);
+        mms_scheduler_add(&task, ts, parallel_sum, &args, (unsigned int)in_max_sum);
         mms_scheduler_join(ts, &task);
     }
     for (i = 0; i < args.parital_sum_num; ++i)
         sum += args.partial_sums[i];
     free(args.partial_sums);
-    *(mms_ulong*)pArgs = sum;
+    *(unsigned long*)pArgs = sum;
 }
 
 int
 main(void)
 {
     void *memory;
-    mms_size needed_memory;
+    size_t needed_memory;
 
     struct mms_scheduler ts;
     mms_scheduler_init(&ts, &needed_memory, MMS_DEFAULT, NULL);
@@ -87,9 +87,9 @@ main(void)
     assert(memory);
     mms_scheduler_start(&ts, memory);
     {
-        mms_ulong serial_sum = 0;
-        mms_ulong max = 10 * 1024 * 1024;
-        mms_ulong in_max_sum = max;
+        unsigned long serial_sum = 0;
+        unsigned long max = 10 * 1024 * 1024;
+        unsigned long in_max_sum = max;
 
         struct mms_task task;
         mms_scheduler_add(&task, &ts, parallel_reduction_sum, &in_max_sum, 1);
@@ -97,7 +97,7 @@ main(void)
 
         fprintf(stdout, "Parallel complete sum:\t%lu\n", in_max_sum);
         {
-            mms_ulong i = 0;
+            unsigned long i = 0;
             for (i = 0; i < max; ++i)
                 serial_sum += i + 1;
         }
