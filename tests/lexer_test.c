@@ -42,6 +42,7 @@ test_log(void *pArg, enum mml_log_level type, mml_size line, const char *fmt, ..
 {
     char buffer[1024];
     va_list arglist;
+    (void)pArg;
     va_start(arglist, fmt);
     printf("%s(%lu):  ", (type == MML_WARNING) ? "Warning" : "Error", line);
     vprintf(fmt, arglist);
@@ -127,7 +128,7 @@ int main(void)
         struct mml_lexer lexer;
         mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "0.544", MML_TOKEN_NUMBER, MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC);
+        test_token(&tok, "0.544", MML_TOKEN_NUMBER, (MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC));
         test_assert(mml_token_to_double(&tok) == 0.544);
     }
 
@@ -140,7 +141,7 @@ int main(void)
         test_assert(mml_read(&lexer, &tok));
         test_token(&tok, "-", MML_TOKEN_PUNCTUATION, MML_PUNCT_SUB);
         test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "23957", MML_TOKEN_NUMBER, MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC);
+        test_token(&tok, "23957", MML_TOKEN_NUMBER, 0);
         test_assert((-mml_token_to_int(&tok)) == -23957);
     }
 
@@ -166,7 +167,7 @@ int main(void)
         test_assert(mml_read(&lexer, &tok));
         test_token(&tok, "-", MML_TOKEN_PUNCTUATION, MML_PUNCT_SUB);
         test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "34356.4384", MML_TOKEN_NUMBER, MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC);
+        test_token(&tok, "34356.4384", MML_TOKEN_NUMBER, (MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC));
         test_assert((-mml_token_to_double(&tok)) == -34356.4384);
     }
 

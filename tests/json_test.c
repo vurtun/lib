@@ -42,7 +42,7 @@
         printf("======================================================\n"); \
     } while (0)
 
-int run_test(void)
+static int run_test(void)
 {
     int pass_count = 0;
     int fail_count = 0;

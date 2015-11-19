@@ -71,7 +71,7 @@ test_log(const char* text)
     printf("[debug] %s\n", text);
 }
 
-static mmw_int
+static int
 dispatch(struct mmw_con *connection, void *userdata)
 {
     struct server_state *state = (struct server_state*)userdata;

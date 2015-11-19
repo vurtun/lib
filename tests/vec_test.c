@@ -1,7 +1,7 @@
 #define XV_STATIC
 #define XV_DEFINE
 #include <math.h>
-#include "mm_vec.h"
+#include "../mm_vec.h"
 
 #include <stdio.h>
 #include <stdlib.h>
