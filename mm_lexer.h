@@ -55,7 +55,7 @@ DEFINES:
     MML_ASSERT
     MML_USE_ASSERT
         If you define MML_USE_ASSERT without defining MM_ASSERT mm_lexer.h
-        will use assert.h and asssert(). Otherwise it will use your assert
+        will use assert.h and assert(). Otherwise it will use your assert
         method. If you do not define MML_USE_ASSERT no additional checks
         will be added. This is the only C standard library function used
         by mm_lexer.
@@ -67,7 +67,7 @@ DEFINES:
 
     MML_MEMSET
         You can define this to 'memset' or your own memset replacement.
-        If not, mm_lexer.h uses a naive (maybe inefficent) implementation.
+        If not mm_lexer uses a naive (maybe inefficent) implementation.
 
 
 LIMITATIONS:
