@@ -29,16 +29,20 @@ DEFINE:
     MMS_ASSERT
     MMS_USE_ASSERT
         If you define MMS_USE_ASSERT without defining MM_ASSERT mm_sched.h
-        will use assert.h and asssert(). Otherwise it will use your assert
+        will use assert.h and assert(). Otherwise it will use your assert
         method. If you do not define MMS_USE_ASSERT no additional checks
         will be added. This is the only C standard library function used
         by mm_sched.
+
+    MMS_MEMSET
+        You can define this to 'memset' or your own memset replacement.
+        If not, mm_sched.h uses a naive (maybe inefficent) implementation.
 
     MMS_INT32
     MMS_UINT32
     MMS_UINT_PTR
         If your compiler is C99 you do not need to define this.
-        Otherwise, mm_web will try default assignments for them
+        Otherwise, mm_sched will try default assignments for them
         and validate them at compile time. If they are incorrect, you will
         get compile errors and will need to define them yourself.
 
@@ -330,8 +334,12 @@ template<typename T> struct mms_alignof{struct Big {T x; char c;}; enum {
 #define MMS_MIN(a,b) (((a)<(b))?(a):(b))
 #define MMS_MAX(a,b) (((a)>(b))?(a):(b))
 
+#ifndef MMS_MEMSET
+#define MMS_MEMSET mms_memset
+#endif
+
 MMS_INTERN void
-mms_fill_size(void *ptr, mms_int c0, mms_size size)
+mms_memset(void *ptr, mms_int c0, mms_size size)
 {
     #define word unsigned
     #define wsize sizeof(word)
@@ -389,7 +397,7 @@ mms_fill_size(void *ptr, mms_int c0, mms_size size)
 MMS_INTERN void
 mms_zero_size(void *ptr, mms_size size)
 {
-    mms_fill_size(ptr, 0, size);
+    MMS_MEMSET(ptr, 0, size);
 }
 
 /* ---------------------------------------------------------------
