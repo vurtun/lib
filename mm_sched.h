@@ -14,24 +14,47 @@ ABOUT:
     - Braided parallelism: Can issue tasks from another task as well as from the thread which created the Task System.
     - Up-front Allocation friendly: Designed for zero allocations during scheduling.
 
-QUICK:
-    To use this file do:
-    #define MMS_IMPLEMENTATION
-    before you include this file in *one* C or C++ file to create the implementation
+DEFINE:
+    MMS_IMPLEMENTATION
+        Generates the implementation of the library into the included file.
+        If not provided the library is in header only mode and can be included
+        in other headers or source files without problems. But only ONE file
+        should hold the implementation.
 
-    If you want to keep the implementation in that file you have to do
-    #define MMS_STATIC before including this file
+    MMS_STATIC
+        The generated implementation will stay private inside implementation
+        file and all internal symbols and functions will only be visible inside
+        that file.
 
-    If you want to use asserts to add validation add
-    #define MMS_ASSERT before including this file
+    MMS_ASSERT
+    MMS_USE_ASSERT
+        If you define MMS_USE_ASSERT without defining MM_ASSERT mm_sched.h
+        will use assert.h and asssert(). Otherwise it will use your assert
+        method. If you do not define MMS_USE_ASSERT no additional checks
+        will be added. This is the only C standard library function used
+        by mm_sched.
 
-    if you want to change the number of spins until a thread is sent to sleep add
-    #define MMS_SPIN_COUNT_MAX xxx
+    MMS_INT32
+    MMS_UINT32
+    MMS_UINT_PTR
+        If your compiler is C99 you do not need to define this.
+        Otherwise, mm_web will try default assignments for them
+        and validate them at compile time. If they are incorrect, you will
+        get compile errors and will need to define them yourself.
 
-    if you want to change the number of elements inside a thread pipe add
-    #define MMS_PIPE_SIZE_LOG2 xx
-    The number is in 2^n and should be between smaller than 32 since it would
-    otherwise overflow the atomic integer type.
+        You can define this to 'size_t' if you use the standard library,
+        otherwise it needs to be able to hold the maximum addressable memory
+        space. If you do not define this it will default to unsigned long.
+
+    MMS_SPIN_COUNT_MAX
+        You can change this to set the maximum number of spins for worker
+        threads to stop looking for work and go into a sleeping state.
+
+    MMS_PIPE_SIZE_LOG2
+        You can change this to set the size of each worker thread pipe.
+        The value is in power of two and needs to smaller than 32 otherwise
+        the atomic integer type will overflow.
+
 
 LICENSE: (zlib)
     Copyright (c) 2015 Doug Binks, Micha Mettke
@@ -55,23 +78,6 @@ LICENSE: (zlib)
 CONTRIBUTORS:
     Doug Binks (implementation)
     Micha Mettke (single header ANSI C conversion)
-
-USAGE:
-    This file behaves differently depending on what symbols you define
-    before including it.
-
-    Header-File mode:
-    If you do not define MMS_IMPLEMENTATION before including this file, it
-    will operate in header only mode. In this mode it declares all used structs
-    and the API of the library without including the implementation of the library.
-
-    Implementation mode:
-    If you define MMS_IMPLEMENTATIOn before including this file, it will
-    compile the implementation of the JSON parser. To specify the visibility
-    as private and limit all symbols inside the implementation file
-    you can define MMS_STATIC before including this file.
-    Make sure that you only include this file implementation in *one* C or C++ file
-    to prevent collisions.
 
 EXAMPLES:*/
 #if 0
@@ -115,30 +121,38 @@ extern "C" {
 #define MMS_API extern
 #endif
 
-#ifdef MMS_USE_FIXED_TYPES
-/* setting this define adds header <stdint.h> for fixed sized types
- * if not defined each type has to be set to the correct size*/
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
 #include <stdint.h>
-typedef int32_t mms_int;
-typedef int32_t mms_bool;
-typedef int64_t mms_long;
-typedef uint32_t mms_uint;
-typedef uint64_t mms_ulong;
-typedef uint8_t mms_byte;
-typedef uint64_t mms_size;
+#ifndef MMS_UINT32
+#define MMS_UINT32 uint32_t
+#endif
+#ifndef MMS_INT32
+#define MMS_INT32 int32_t
+#endif
+#ifndef MMS_UINT_PTR
+#define MMS_UINT_PTR uintptr_t
+#endif
 #else
-typedef int mms_int;
-typedef int mms_bool;
-typedef long mms_long;
-typedef unsigned int mms_uint;
-typedef unsigned long mms_ulong;
-typedef unsigned char mms_byte;
-typedef unsigned long mms_size;
+#ifndef MMS_UINT32
+#define MMS_UINT32 unsigned int
+#endif
+#ifndef MMS_INT32
+#define MMS_INT32 int
+#endif
+#ifndef MMS_UINT_PTR
+#define MMS_UINT_PTR unsigned long
+#endif
 #endif
 
+typedef unsigned char mms_byte;
+typedef MMS_UINT32 mms_uint;
+typedef MMS_INT32 mms_int;
+typedef MMS_UINT_PTR mms_size;
+typedef MMS_UINT_PTR mms_ptr;
+
 struct mms_scheduler;
-typedef void(*mms_run)(void*, struct mms_scheduler*, mms_uint begin,
-    mms_uint end, mms_uint thread_num);
+typedef void(*mms_run)(void*, struct mms_scheduler*, unsigned int begin,
+    unsigned int end, unsigned int thread_num);
 
 struct mms_task {
     void *userdata;
@@ -173,23 +187,23 @@ struct mms_pipe;
 struct mms_scheduler {
     struct mms_pipe *pipes;
     /* pipe for every worker thread */
-    mms_uint threads_num;
+    unsigned int threads_num;
     /* number of worker threads */
     struct mms_thread_args *args;
     /* data used in the os thread callback */
     void *threads;
     /* os threads array  */
-    volatile mms_bool running;
+    volatile mms_int running;
     /* flag whether the scheduler is running  */
     volatile mms_int thread_running;
     /* number of thread that are currently running */
     volatile mms_int thread_active;
     /* number of thread that are currently active */
-    mms_uint partitions_num;
+    unsigned partitions_num;
     /* divider for the array handled by a task */
     struct mms_event *event;
     /* os event to signal work */
-    mms_bool have_threads;
+    mms_int have_threads;
     /* flag whether the os threads have been created */
     struct mms_profiling profiling;
     /* profiling callbacks  */
@@ -247,6 +261,7 @@ MMS_API void mms_scheduler_stop(struct mms_scheduler*);
 }
 #endif
 #endif /* MMS_H_ */
+
 /* ===============================================================
  *
  *                          IMPLEMENTATION
@@ -254,12 +269,17 @@ MMS_API void mms_scheduler_stop(struct mms_scheduler*);
  * ===============================================================*/
 #ifdef MMS_IMPLEMENTATION
 
+/* windows requires Windows.h even if you use mingw */
 #if defined(_WIN32) || (defined(__MINGW32__) || defined(__MINGW64__))
     #define WIN32_LEAN_AND_MEAN
     #include <Windows.h>
 #endif
 
-#define MMS_UNUSED(x) ((void)x)
+/* make sure atomic and pointer types have correct size */
+typedef int mms__check_ptr_size[(sizeof(void*) == sizeof(MMS_UINT_PTR)) ? 1 : -1];
+typedef int mms__check_ptr_uint32[(sizeof(mms_uint) == 4) ? 1 : -1];
+typedef int mms__check_ptr_int32[(sizeof(mms_int) == 4) ? 1 : -1];
+
 #ifdef MMS_USE_ASSERT
 #ifndef MMS_ASSERT
 #include <assert.h>
@@ -300,11 +320,15 @@ template<typename T> struct mms_alignof{struct Big {T x; char c;}; enum {
 # define MMS_PTR_TO_UINT(x) ((mms_size)(x))
 #endif
 
-#define MMS_MIN(a,b) (((a)<(b))?(a):(b))
-#define MMS_MAX(a,b) (((a)>(b))?(a):(b))
+/* Pointer math*/
 #define MMS_PTR_ADD(t, p, i) ((t*)((void*)((mms_byte*)(p) + (i))))
 #define MMS_ALIGN_PTR(x, mask)\
     (MMS_UINT_TO_PTR((MMS_PTR_TO_UINT((mms_byte*)(x) + (mask-1)) & ~(mask-1))))
+
+/* Helper */
+#define MMS_UNUSED(x) ((void)x)
+#define MMS_MIN(a,b) (((a)<(b))?(a):(b))
+#define MMS_MAX(a,b) (((a)>(b))?(a):(b))
 
 MMS_INTERN void
 mms_fill_size(void *ptr, mms_int c0, mms_size size)
@@ -368,9 +392,9 @@ mms_zero_size(void *ptr, mms_size size)
     mms_fill_size(ptr, 0, size);
 }
 
-/* ===============================================================
+/* ---------------------------------------------------------------
  *                          ATOMIC
- * ===============================================================*/
+ * ---------------------------------------------------------------*/
 #if  defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
     #include <intrin.h>
     void _ReadWriteBarrier();
@@ -409,9 +433,10 @@ mms_atomic_add(volatile mms_int *dst, mms_int value)
     return (mms_int)__sync_add_and_fetch(dst, value);
 #endif
 }
-/* ===============================================================
+
+/* ---------------------------------------------------------------
  *                          THREAD
- * ===============================================================*/
+ * ---------------------------------------------------------------*/
 #if defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
 #define MMS_THREAD_FUNC_DECL DWORD WINAPI
 #define MMS_THREAD_LOCAL __declspec(thread)
@@ -423,7 +448,7 @@ struct mms_event {
 };
 const mms_uint MMS_INFINITE = INFINITE;
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_thread_create(mms_thread *returnid, DWORD(WINAPI *StartFunc)(void*), void *arg)
 {
     DWORD thread;
@@ -431,7 +456,7 @@ mms_thread_create(mms_thread *returnid, DWORD(WINAPI *StartFunc)(void*), void *a
     return *returnid != NULL;
 }
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_thread_term(mms_thread threadid)
 {
     return CloseHandle(threadid) == 0;
@@ -498,7 +523,7 @@ struct mms_event {
 };
 const mms_int MMS_INFINITE = -1;
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_thread_create(mms_thread *returnid, void*(*StartFunc)(void*), void *arg)
 {
     mms_int ret_val;
@@ -508,7 +533,7 @@ mms_thread_create(mms_thread *returnid, void*(*StartFunc)(void*), void *arg)
     return(ret_val == 0);
 }
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_thread_term(mms_thread threadid)
 {
     return (pthread_cancel(threadid) == 0);
@@ -567,9 +592,10 @@ mms_num_hw_threads(void)
 }
 
 #endif
-/* ===============================================================
+
+/* ---------------------------------------------------------------
  *                          PIPE
- * ===============================================================*/
+ * ---------------------------------------------------------------*/
 /*  PIPE
     Single writer, multiple reader thread safe pipe using (semi) lockless programming
     Readers can only read from the back of the pipe
@@ -616,7 +642,7 @@ struct mms_pipe {
 /* utility function, not intended for general use. Should only be used very prudenlty*/
 #define mms_pipe_is_empty(p) (((p)->write - (p)->read_count) == 0)
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_pipe_read_back(struct mms_pipe *pipe, struct mms_subset_task *dst)
 {
     /* return false if we are unable to read. This is thread safe for both
@@ -662,7 +688,7 @@ mms_pipe_read_back(struct mms_pipe *pipe, struct mms_subset_task *dst)
     return 1;
 }
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_pipe_read_front(struct mms_pipe *pipe, struct mms_subset_task *dst)
 {
     mms_uint prev;
@@ -701,7 +727,7 @@ mms_pipe_read_front(struct mms_pipe *pipe, struct mms_subset_task *dst)
     return 1;
 }
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_pipe_write(struct mms_pipe *pipe, const struct mms_subset_task *src)
 {
     /* returns false if we were to write. This is thread safe for the single
@@ -736,9 +762,10 @@ mms_pipe_write(struct mms_pipe *pipe, const struct mms_subset_task *src)
     pipe->write = write_index;
     return 1;
 }
-/* ===============================================================
- *                          Scheduler
- * ===============================================================*/
+
+/* ---------------------------------------------------------------
+ *                          SCHEDULER
+ * ---------------------------------------------------------------*/
 /* IMPORTANT: Define this to control the maximum number of iterations for a
  * thread to check for work until it is send into a sleeping state */
 #ifndef MMS_SPIN_COUNT_MAX
@@ -756,12 +783,12 @@ MMS_GLOBAL const mms_size mms_thread_align = MMS_ALIGNOF(mms_thread);
 MMS_GLOBAL const mms_size mms_event_align = MMS_ALIGNOF(struct mms_event);
 MMS_GLOBAL MMS_THREAD_LOCAL mms_uint gtl_thread_num = 0;
 
-MMS_INTERN mms_bool
+MMS_INTERN mms_int
 mms_try_running_task(struct mms_scheduler *s, mms_uint thread_num, mms_uint *pipe_hint)
 {
     /* check for tasks */
     struct mms_subset_task subtask;
-    mms_bool have_task = mms_pipe_read_front(&s->pipes[thread_num], &subtask);
+    mms_int have_task = mms_pipe_read_front(&s->pipes[thread_num], &subtask);
     mms_uint thread_to_check = *pipe_hint;
     mms_uint check_count = 0;
 
@@ -787,7 +814,7 @@ MMS_INTERN void
 mms_scheduler_wait_for_work(struct mms_scheduler *s, mms_uint thread_num)
 {
     mms_uint i = 0;
-    mms_bool have_tasks = 0;
+    mms_int have_tasks = 0;
     for (i = 0; i < s->threads_num; ++i) {
         if (!mms_pipe_is_empty(&s->pipes[i])) {
             have_tasks = 1;
@@ -964,7 +991,7 @@ mms_scheduler_join(struct mms_scheduler *s, struct mms_task *task)
 MMS_API void
 mms_scheduler_wait(struct mms_scheduler *s)
 {
-    mms_bool have_task = 1;
+    mms_int have_task = 1;
     mms_uint pipe_hint = gtl_thread_num+1;
     MMS_ASSERT(s);
 

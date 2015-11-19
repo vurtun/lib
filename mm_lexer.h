@@ -40,22 +40,35 @@ LICENSE: (zlib)
         misrepresented as being the original software.
     3.  This notice may not be removed or altered from any source distribution.
 
-USAGE:
-    This file behaves differently depending on what symbols you define
-    before including it.
+DEFINES:
+    MML_IMPLEMENTATION
+        Generates the implementation of the library into the included file.
+        If not provided the library is in header only mode and can be included
+        in other headers or source files without problems. But only ONE file
+        should hold the implementation.
 
-    Header-File mode:
-    If you do not define MML_IMPLEMENTATION before including this file, it
-    will operate in header only mode. In this mode it declares all used structs
-    and the API of the library without including the implementation of the library.
+    MML_STATIC
+        The generated implementation will stay private inside implementation
+        file and all internal symbols and functions will only be visible inside
+        that file.
 
-    Implementation mode:
-    If you define MML_IMPLEMENTATIOn before including this file, it will
-    compile the implementation of the JSON parser. To specify the visibility
-    as private and limit all symbols inside the implementation file
-    you can define MML_STATIC before including this file.
-    Make sure that you only include this file implementation in *one* C or C++ file
-    to prevent collisions.
+    MML_ASSERT
+    MML_USE_ASSERT
+        If you define MML_USE_ASSERT without defining MM_ASSERT mm_lexer.h
+        will use assert.h and asssert(). Otherwise it will use your assert
+        method. If you do not define MML_USE_ASSERT no additional checks
+        will be added. This is the only C standard library function used
+        by mm_lexer.
+
+    MML_SIZE_TYPE
+        You can define this to 'size_t' if you use the standard library,
+        otherwise it needs to be able to hold the maximum addressable memory
+        space. If you do not define this it will default to unsigned long.
+
+    MML_MEMSET
+        You can define this to 'memset' or your own memset replacement.
+        If not, mm_lexer.h uses a naive (maybe inefficent) implementation.
+
 
 LIMITATIONS:
     Convert precision:
@@ -128,10 +141,10 @@ EXAMPLES:*/
 
     /* token to number conversion */
     /* You should always check if the token (sub)type is correct */
-    mml_int i = mml_token_to_int(&tok);
-    mml_float f = mml_token_to_float(&tok);
-    mml_double d = mml_token_to_double(&tok);
-    mml_ulong ul = mml_token_to_unsigned_long(&tok);
+    int i = mml_token_to_int(&tok);
+    float f = mml_token_to_float(&tok);
+    double d = mml_token_to_double(&tok);
+    unsigned long ul = mml_token_to_unsigned_long(&tok);
 #endif
 
  /* ===============================================================
@@ -152,33 +165,18 @@ extern "C" {
 #define MML_API extern
 #endif
 
-/* ---------------------------------------------------------------
- *                          BASIC
- * ---------------------------------------------------------------*/
-#ifdef MML_USE_FIXED_TYPES
-/* setting this define adds header <stdint.h> for fixed sized types
- * if not defined each type has to be set to the correct size*/
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
 #include <stdint.h>
-typedef int32_t mml_int;
-typedef int32_t mml_bool;
-typedef int64_t mml_long;
-typedef uint32_t mml_uint;
-typedef uint64_t mml_ulong;
-typedef uint8_t mml_byte;
-typedef uint64_t mml_size;
-typedef float mml_float;
-typedef double mml_double;
-#else
-typedef int mml_int;
-typedef int mml_bool;
-typedef long mml_long;
-typedef unsigned int mml_uint;
-typedef unsigned long mml_ulong;
-typedef unsigned char mml_byte;
-typedef unsigned long mml_size;
-typedef float mml_float;
-typedef double mml_double;
+#ifndef MML_SIZE_TYPE
+#define MML_SIZE_TYPE uintptr_t
 #endif
+#else
+#ifndef MML_SIZE_TYPE
+#define MML_SIZE_TYPE unsigned long
+#endif
+#endif
+typedef unsigned char mml_byte;
+typedef MML_SIZE_TYPE mml_size;
 
 /* ---------------------------------------------------------------
  *                      PUNCTUATION
@@ -250,7 +248,7 @@ enum mml_default_punctuation_ids {
 struct mml_punctuation {
     const char *string;
     /* string representation of the punctuation */
-    mml_int id;
+    int id;
     /* number identitfier to stored inside the token flag */
 };
 
@@ -299,13 +297,13 @@ struct mml_token {
     access to the text which is not always wanted.*/
     enum mml_token_type type;
     /* main type of the token */
-    mml_uint subtype;
+    unsigned int subtype;
     /* subtype flags of the token */
     mml_size line;
     /* text line the token was read from */
-    mml_bool line_crossed;
+    int line_crossed;
     /* flag indicating if the token spans over multible lines */
-    struct {mml_ulong i; mml_double f;} value;
+    struct {unsigned long i; double f;} value;
     /* number representation of the token */
     const char *str;
     /* text pointer to the beginning of the token inside the text */
@@ -322,7 +320,7 @@ MML_API mml_size mml_token_cpy(char*, mml_size max, const struct mml_token*);
     Output:
     - length of the copied string
 */
-MML_API mml_int mml_token_cmp(const struct mml_token*, const char*);
+MML_API int mml_token_cmp(const struct mml_token*, const char*);
 /*  this function compares the token content with a user string
     Input:
     - token to check the string against
@@ -330,7 +328,7 @@ MML_API mml_int mml_token_cmp(const struct mml_token*, const char*);
     Output:
     - if equal will return 1 otherwise 0 (same as strcmp)
 */
-MML_API mml_int mml_token_icmp(const struct mml_token*, const char*);
+MML_API int mml_token_icmp(const struct mml_token*, const char*);
 /*  this function makes a case insensitive compare of the
  *  token content with a user string.
     Input:
@@ -339,28 +337,28 @@ MML_API mml_int mml_token_icmp(const struct mml_token*, const char*);
     Output:
     - if equal will return 1 otherwise 0 (same as strcmp)
 */
-MML_API mml_int mml_token_to_int(struct mml_token*);
+MML_API int mml_token_to_int(struct mml_token*);
 /*  this function converts the token content into an int
     Input:
     - token to convert into an integer
     Output:
     - converted integer value if token is a number or 0 otherwise
 */
-MML_API mml_float mml_token_to_float(struct mml_token*);
+MML_API float mml_token_to_float(struct mml_token*);
 /*  this function converts the token content into an float
     Input:
     - token to convert into an floating point number
     Output:
     - converted float value if token is a number or 0.0f otherwise
 */
-MML_API mml_double mml_token_to_double(struct mml_token*);
+MML_API double mml_token_to_double(struct mml_token*);
 /*  this function converts the token content into an double
     Input:
     - token to convert into an double floating point number
     Output:
     - converted double value if token is a number or 0.0 otherwise
 */
-MML_API mml_ulong mml_token_to_unsigned_long(struct mml_token*);
+MML_API unsigned long mml_token_to_unsigned_long(struct mml_token*);
 /*  this function converts the token content into an unsigned long integer
     Input:
     - token to convert into an unsigned long integer number
@@ -384,7 +382,7 @@ struct mml_lexer {
     table to suite your needs.
     For error handling the lexer supports an error flag that can be
     checked as well a logging callback for more extensive error handling.*/
-    mml_bool error;
+    int error;
     /* error flags that will be set if an error occurs*/
     const char *buffer;
     /* pointer to the beginning the the text to parse */
@@ -420,14 +418,14 @@ MML_API void mml_init(struct mml_lexer *lexer, const char *ptr, mml_size len,
 */
 MML_API void mml_reset(struct mml_lexer*);
 /*  this function resets the lexer back to beginning */
-MML_API mml_int mml_read(struct mml_lexer*, struct mml_token*);
+MML_API int mml_read(struct mml_lexer*, struct mml_token*);
 /*  this function reads a token from a loaded lexer
     Input:
     - token to hold the parsed content information
     Output:
     - if successfully 1 or 0 otherwise
 */
-MML_API mml_int mml_read_on_line(struct mml_lexer*, struct mml_token*);
+MML_API int mml_read_on_line(struct mml_lexer*, struct mml_token*);
 /*  this function reads a token from a loaded lexer only if on the same line
     Input:
     - token to hold the parsed content information
@@ -439,7 +437,7 @@ MML_API void mml_unread(struct mml_lexer*, struct mml_token*);
     Input:
     - token push back into the lexer
 */
-MML_API mml_int mml_expect_string(struct mml_lexer*, const char*);
+MML_API int mml_expect_string(struct mml_lexer*, const char*);
 /*  this function reads a token and check the token content. If the token
     content is not equal to the provided string a error occurs.
     Input:
@@ -447,8 +445,8 @@ MML_API mml_int mml_expect_string(struct mml_lexer*, const char*);
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_expect_type(struct mml_lexer*, enum mml_token_type type,
-                                mml_uint subtype, struct mml_token*);
+MML_API int mml_expect_type(struct mml_lexer*, enum mml_token_type type,
+                                unsigned int subtype, struct mml_token*);
 /*  this function reads a token and checks for token type + subtype. If the token
     type and subtype or not correct an error will be raised.
     Input:
@@ -458,14 +456,14 @@ MML_API mml_int mml_expect_type(struct mml_lexer*, enum mml_token_type type,
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_expect_any(struct mml_lexer*, struct mml_token*);
+MML_API int mml_expect_any(struct mml_lexer*, struct mml_token*);
 /*  this function tries to read in a token and if not possible will raise and error
     Input:
     - token to hold the parsed content information
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_check_string(struct mml_lexer*, const char*);
+MML_API int mml_check_string(struct mml_lexer*, const char*);
 /*  this function tries to read in a token holding with given content.
  *  If it succeeds the token will be returned. If not the read token will be unread.
     Input:
@@ -473,8 +471,8 @@ MML_API mml_int mml_check_string(struct mml_lexer*, const char*);
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_check_type(struct mml_lexer*, enum mml_token_type type,
-                                mml_uint subtype, struct mml_token*);
+MML_API int mml_check_type(struct mml_lexer*, enum mml_token_type type,
+                                unsigned int subtype, struct mml_token*);
 /*  this function tries to read in a token holding with token type and subtype.
  *  If it succeeds the token will be returned. If not the read token will be unread.
     Input:
@@ -484,15 +482,15 @@ MML_API mml_int mml_check_type(struct mml_lexer*, enum mml_token_type type,
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_peek_string(struct mml_lexer*, const char*);
+MML_API int mml_peek_string(struct mml_lexer*, const char*);
 /*  this function checks the next token for the given string content
     Input:
     - the expected parsed token string
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_peek_type(struct mml_lexer*, enum mml_token_type type,
-                            mml_uint subtype, struct mml_token*);
+MML_API int mml_peek_type(struct mml_lexer*, enum mml_token_type type,
+                            unsigned int subtype, struct mml_token*);
 /*  this function checks the next token for the given type and subtype
     Input:
     - expected token type
@@ -501,28 +499,28 @@ MML_API mml_int mml_peek_type(struct mml_lexer*, enum mml_token_type type,
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MML_API mml_int mml_skip_until(struct mml_lexer*, const char*);
+MML_API int mml_skip_until(struct mml_lexer*, const char*);
 /*  this function skips all tokens until a token holding a certain string
     Input:
     - a expected string the parse should skip to
     Output:
     - 1 if successful, 0 otherwise
 */
-MML_API mml_int mml_skip_line(struct mml_lexer*);
+MML_API int mml_skip_line(struct mml_lexer*);
 /*  this function skips the current line */
-MML_API mml_int mml_parse_int(struct mml_lexer*);
+MML_API int mml_parse_int(struct mml_lexer*);
 /*  this function reads in a token and tries to convert it into an integer.
     If the conversion fails an error will be raised.
     Output:
     - parsed integer value
 */
-MML_API mml_bool mml_parse_bool(struct mml_lexer*);
+MML_API int mml_parse_bool(struct mml_lexer*);
 /*  this function reads in a token and tries to convert it into an boolean.
     If the conversion fails an error will be raised.
     Output:
     - parsed boolean value
 */
-MML_API mml_float mml_parse_float(struct mml_lexer*);
+MML_API float mml_parse_float(struct mml_lexer*);
 /*  this function reads in a token and tries to convert it into an float.
     If the conversion fails an error will be raised.
     Output:
@@ -571,8 +569,13 @@ MML_API mml_float mml_parse_float(struct mml_lexer*);
 #define MML_GLOBAL static
 #define MML_STORAGE static
 
+#ifndef MML_MEMSET
+#define MML_MEMSET mml_memset
+#endif
+
 /* library intern default punctuation map */
-MML_GLOBAL const struct mml_punctuation mml_default_punctuations[] = {
+MML_GLOBAL const struct mml_punctuation
+mml_default_punctuations[] = {
 #define PUNCTUATION(chars, id) {chars, id},
     MML_DEFAULT_PUNCTION_MAP(PUNCTUATION)
 #undef PUNCTUATION
@@ -590,7 +593,7 @@ mml_char_upper(char c)
 }
 
 MML_INTERN void
-mml_fill_size(void *ptr, int c0, mml_size size)
+mml_memset(void *ptr, int c0, mml_size size)
 {
     #define word unsigned
     #define wsize sizeof(word)
@@ -646,7 +649,7 @@ mml_fill_size(void *ptr, int c0, mml_size size)
 MML_INTERN void
 mml_zero_size(void *ptr, mml_size size)
 {
-    mml_fill_size(ptr, 0, size);
+    MML_MEMSET(ptr, 0, size);
 }
 
 /* ---------------------------------------------------------------
@@ -678,7 +681,7 @@ mml_token_cpy(char *dst, mml_size max, const struct mml_token* tok)
     return ret;
 }
 
-MML_API mml_int
+MML_API int
 mml_token_icmp(const struct mml_token* tok, const char* str)
 {
     mml_size i;
@@ -694,7 +697,7 @@ mml_token_icmp(const struct mml_token* tok, const char* str)
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_token_cmp(const struct mml_token* tok, const char* str)
 {
     mml_size i;
@@ -710,22 +713,22 @@ mml_token_cmp(const struct mml_token* tok, const char* str)
     return 0;
 }
 
-MML_INTERN mml_double
+MML_INTERN double
 mml_token_parse_double(const char *p, mml_size length)
 {
-    mml_int i, div, pow;
-    mml_double m;
+    int i, div, pow;
+    double m;
     mml_size len = 0;
-    mml_double f = 0;
+    double f = 0;
     while (len < length && p[len] != '.' && p[len] != 'e') {
-        f = f * 10.0 + (mml_double)(p[len] - '0');
+        f = f * 10.0 + (double)(p[len] - '0');
         len++;
     }
 
     if (len < length && p[len] == '.') {
         len++;
         for (m = 0.1; len < length; len++) {
-            f = f + (mml_double)(p[len] - '0') * m;
+            f = f + (double)(p[len] - '0') * m;
             m *= 0.1;
         }
     }
@@ -740,7 +743,7 @@ mml_token_parse_double(const char *p, mml_size length)
         } else div = 0;
         pow = 0;
         for (pow = 0; len < length; len++)
-            pow = pow * 10 + (mml_int)(p[len] - '0');
+            pow = pow * 10 + (int)(p[len] - '0');
         for (m = 1.0, i = 0; i < pow; ++i)
             m *= 100.0;
         if (div) f /= m;
@@ -749,54 +752,54 @@ mml_token_parse_double(const char *p, mml_size length)
     return f;
 }
 
-MML_INTERN mml_ulong
+MML_INTERN unsigned long
 mml_token_parse_int(const char *p, mml_size length)
 {
-    mml_ulong i = 0;
+    unsigned long i = 0;
     mml_size len = 0;
     while (len < length) {
-        i = i * 10 + (mml_ulong)(p[len] - '0');
+        i = i * 10 + (unsigned long)(p[len] - '0');
         len++;
     }
     return i;
 }
 
-MML_INTERN mml_ulong
+MML_INTERN unsigned long
 mml_token_parse_oct(const char *p, mml_size length)
 {
-    mml_ulong i = 0;
+    unsigned long i = 0;
     mml_size len = 1;
     while (len < length) {
-        i = (i << 3) + (mml_ulong)(p[len] - '0');
+        i = (i << 3) + (unsigned long)(p[len] - '0');
         len++;
     }
     return i;
 }
 
-MML_INTERN mml_ulong
+MML_INTERN unsigned long
 mml_token_parse_hex(const char *p, mml_size length)
 {
-    mml_ulong i = 0;
+    unsigned long i = 0;
     mml_size len = 2;
     while (len < length) {
         i <<= 4;
         if (p[len] >= 'a' && p[len] <= 'f')
-            i += (mml_ulong)((p[len] - 'a') + 10);
+            i += (unsigned long)((p[len] - 'a') + 10);
         else if (p[len] >= 'A' && p[len] <= 'F') {
-            i += (mml_ulong)((p[len] - 'A') + 10);
-        } else i += (mml_ulong)(p[len] - '0');
+            i += (unsigned long)((p[len] - 'A') + 10);
+        } else i += (unsigned long)(p[len] - '0');
         len++;
     }
     return i;
 }
 
-MML_INTERN mml_ulong
+MML_INTERN unsigned long
 mml_token_parse_bin(const char *p, mml_size length)
 {
-    mml_ulong i = 0;
+    unsigned long i = 0;
     mml_size len = 2;
     while (len < length) {
-        i = (i << 1) + (mml_ulong)(p[len] - '0');
+        i = (i << 1) + (unsigned long)(p[len] - '0');
         len++;
     }
     return i;
@@ -805,7 +808,7 @@ mml_token_parse_bin(const char *p, mml_size length)
 MML_INTERN void
 mml_token_number_value(struct mml_token *tok)
 {
-    mml_int i, pow, c;
+    int i, pow, c;
     const char *p;
     MML_ASSERT(tok->type == MML_TOKEN_NUMBER);
     tok->value.i = 0;
@@ -815,54 +818,54 @@ mml_token_number_value(struct mml_token *tok)
     if (tok->subtype & MML_TOKEN_FLOAT) {
         if (tok->subtype & ((MML_TOKEN_INFINITE|MML_TOKEN_INDEFINITE|MML_TOKEN_NAN))) {
             /* special real number constants */
-            union {mml_float f; mml_uint u;} convert;
+            union {float f; unsigned int u;} convert;
             if (tok->subtype & MML_TOKEN_INFINITE) {
                 convert.u = 0x7f800000;
-                tok->value.f = (mml_double)convert.f;
+                tok->value.f = (double)convert.f;
             } else if (tok->subtype & MML_TOKEN_INDEFINITE) {
                 convert.u = 0xffc00000;
-                tok->value.f = (mml_double)convert.f;
+                tok->value.f = (double)convert.f;
             } else if (tok->subtype & MML_TOKEN_NAN) {
                 convert.u = 0x7fc00000;
-                tok->value.f = (mml_double)convert.f;
+                tok->value.f = (double)convert.f;
             }
         } else tok->value.f = mml_token_parse_double(tok->str, tok->len);
-        tok->value.i = (mml_ulong)tok->value.f;
+        tok->value.i = (unsigned long)tok->value.f;
     } else if (tok->subtype & MML_TOKEN_DEC) {
         /* paser decimal number */
         tok->value.i = mml_token_parse_int(p, tok->len);
-        tok->value.f = (mml_double)tok->value.i;
+        tok->value.f = (double)tok->value.i;
     } else if (tok->subtype & MML_TOKEN_OCT) {
         /* parse octal number */
         tok->value.i = mml_token_parse_oct(p, tok->len);
-        tok->value.f = (mml_double)tok->value.i;
+        tok->value.f = (double)tok->value.i;
     } else if (tok->subtype & MML_TOKEN_HEX) {
         /* parse hex number */
         tok->value.i = mml_token_parse_hex(p, tok->len);
-        tok->value.f = (mml_double)tok->value.i;
+        tok->value.f = (double)tok->value.i;
     } else if (tok->subtype & MML_TOKEN_BIN) {
         /* parse binary number */
         tok->value.i = mml_token_parse_bin(p, tok->len);
-        tok->value.f = (mml_double)tok->value.i;
+        tok->value.f = (double)tok->value.i;
     }
     tok->subtype |= MML_TOKEN_VALIDVAL;
 }
 
-MML_API mml_int
+MML_API int
 mml_token_to_int(struct mml_token *tok)
 {
-    return (mml_int)mml_token_to_unsigned_long(tok);
+    return (int)mml_token_to_unsigned_long(tok);
 }
 
-MML_API mml_float
+MML_API float
 mml_token_to_float(struct mml_token *tok)
 {
-    mml_double d = mml_token_to_double(tok);
-    mml_float f = (mml_float)d;;
+    double d = mml_token_to_double(tok);
+    float f = (float)d;;
     return f;
 }
 
-MML_API mml_double
+MML_API double
 mml_token_to_double(struct mml_token *tok)
 {
     if (tok->type != MML_TOKEN_NUMBER)
@@ -874,7 +877,7 @@ mml_token_to_double(struct mml_token *tok)
     return tok->value.f;
 }
 
-MML_API mml_ulong
+MML_API unsigned long
 mml_token_to_unsigned_long(struct mml_token *tok)
 {
     if (tok->type != MML_TOKEN_NUMBER)
@@ -915,8 +918,8 @@ mml_reset(struct mml_lexer *lexer)
     lexer->line = lexer->last_line = 1;
 }
 
-MML_INTERN mml_int
-mml_read_white_space(struct mml_lexer *lexer, mml_bool current_line)
+MML_INTERN int
+mml_read_white_space(struct mml_lexer *lexer, int current_line)
 {
     while (1) {
         /* skip white spaces */
@@ -984,10 +987,10 @@ mml_read_white_space(struct mml_lexer *lexer, mml_bool current_line)
     return 1;
 }
 
-MML_INTERN mml_int
+MML_INTERN int
 mml_read_esc_chars(struct mml_lexer *lexer, char *ch)
 {
-    mml_int c, val, i;
+    int c, val, i;
     lexer->current++;
     if (lexer->current >= lexer->end)
         return 0;
@@ -1061,8 +1064,8 @@ mml_read_esc_chars(struct mml_lexer *lexer, char *ch)
     return 1;
 }
 
-MML_INTERN mml_int
-mml_read_string(struct mml_lexer *lexer, struct mml_token *token, mml_int quote)
+MML_INTERN int
+mml_read_string(struct mml_lexer *lexer, struct mml_token *token, int quote)
 {
     mml_size tmpline;
     const char *tmp;
@@ -1124,13 +1127,13 @@ mml_read_string(struct mml_lexer *lexer, struct mml_token *token, mml_int quote)
     if (token->str) {
         token->len = (mml_size)(lexer->current - token->str) - 1;
         if (token->type == MML_TOKEN_LITERAL)
-            token->subtype = (mml_uint)token->str[0];
-        else token->subtype = (mml_uint)token->len;
+            token->subtype = (unsigned int)token->str[0];
+        else token->subtype = (unsigned int)token->len;
     }
     return 1;
 }
 
-MML_INTERN mml_int
+MML_INTERN int
 mml_read_name(struct mml_lexer *lexer, struct mml_token *token)
 {
     char c;
@@ -1147,11 +1150,11 @@ mml_read_name(struct mml_lexer *lexer, struct mml_token *token)
         (c >= 'A' && c <= 'Z') ||
         (c >= '0' && c <= '9') ||
         c == '_');
-    token->subtype = (mml_uint)token->len;
+    token->subtype = (unsigned int)token->len;
     return 1;
 }
 
-MML_INTERN mml_int
+MML_INTERN int
 mml_check_str(const struct mml_lexer *lexer, const char *str, mml_size len)
 {
     mml_size i;
@@ -1163,11 +1166,11 @@ mml_check_str(const struct mml_lexer *lexer, const char *str, mml_size len)
     return 1;
 }
 
-MML_INTERN mml_int
+MML_INTERN int
 mml_read_number(struct mml_lexer *lexer, struct mml_token *token)
 {
     mml_size i;
-    mml_bool dot;
+    int dot;
     char c, c2;
 
     token->type = MML_TOKEN_NUMBER;
@@ -1311,11 +1314,11 @@ mml_read_number(struct mml_lexer *lexer, struct mml_token *token)
     return 1;
 }
 
-MML_INTERN mml_int
+MML_INTERN int
 mml_read_punctuation(struct mml_lexer *lexer, struct mml_token *token)
 {
     const struct mml_punctuation *punc;
-    mml_int l, i;
+    int l, i;
     const char *p;
 
     token->len = 0;
@@ -1331,17 +1334,17 @@ mml_read_punctuation(struct mml_lexer *lexer, struct mml_token *token)
             token->len += (mml_size)l;
             lexer->current += l;
             token->type = MML_TOKEN_PUNCTUATION;
-            token->subtype = (mml_uint)punc->id;
+            token->subtype = (unsigned int)punc->id;
             return 1;
         }
     }
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_read(struct mml_lexer *lexer, struct mml_token *token)
 {
-    mml_int c;
+    int c;
     if (!lexer->current) return 0;
     if (lexer->current >= lexer->end) return 0;
     if (lexer->error == 1) return 0;
@@ -1382,7 +1385,7 @@ mml_read(struct mml_lexer *lexer, struct mml_token *token)
     return 1;
 }
 
-MML_API mml_int
+MML_API int
 mml_read_on_line(struct mml_lexer *lexer, struct mml_token *token)
 {
     struct mml_token tok;
@@ -1400,7 +1403,7 @@ mml_read_on_line(struct mml_lexer *lexer, struct mml_token *token)
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_expect_string(struct mml_lexer *lexer, const char *string)
 {
     struct mml_token token;
@@ -1423,9 +1426,9 @@ mml_expect_string(struct mml_lexer *lexer, const char *string)
     return 1;
 }
 
-MML_API mml_int
+MML_API int
 mml_expect_type(struct mml_lexer *lexer, enum mml_token_type type,
-    mml_uint subtype, struct mml_token *token)
+    unsigned int subtype, struct mml_token *token)
 {
     if (!mml_read(lexer, token)) {
         if (lexer->log) {
@@ -1454,7 +1457,7 @@ mml_expect_type(struct mml_lexer *lexer, enum mml_token_type type,
     return 1;
 }
 
-MML_API mml_int
+MML_API int
 mml_expect_any(struct mml_lexer *lexer, struct mml_token *token)
 {
     if (!mml_read(lexer, token)) {
@@ -1467,7 +1470,7 @@ mml_expect_any(struct mml_lexer *lexer, struct mml_token *token)
     return 1;
 }
 
-MML_API mml_int
+MML_API int
 mml_check_string(struct mml_lexer *lexer, const char *string)
 {
     struct mml_token token;
@@ -1482,9 +1485,9 @@ mml_check_string(struct mml_lexer *lexer, const char *string)
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_check_type(struct mml_lexer *lexer, enum mml_token_type type,
-    mml_uint subtype, struct mml_token *token)
+    unsigned int subtype, struct mml_token *token)
 {
     struct mml_token tok;
     if (!mml_read(lexer, &tok))
@@ -1500,7 +1503,7 @@ mml_check_type(struct mml_lexer *lexer, enum mml_token_type type,
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_peek_string(struct mml_lexer *lexer, const char *string)
 {
     struct mml_token tok;
@@ -1515,9 +1518,9 @@ mml_peek_string(struct mml_lexer *lexer, const char *string)
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_peek_type(struct mml_lexer *lexer, enum mml_token_type type,
-    mml_uint subtype, struct mml_token *token)
+    unsigned int subtype, struct mml_token *token)
 {
     struct mml_token tok;
     if (!mml_read(lexer, &tok))
@@ -1534,7 +1537,7 @@ mml_peek_type(struct mml_lexer *lexer, enum mml_token_type type,
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_skip_until(struct mml_lexer *lexer, const char *string)
 {
     struct mml_token tok;
@@ -1545,7 +1548,7 @@ mml_skip_until(struct mml_lexer *lexer, const char *string)
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_skip_line(struct mml_lexer *lexer)
 {
     struct mml_token tok;
@@ -1559,7 +1562,7 @@ mml_skip_line(struct mml_lexer *lexer)
     return 0;
 }
 
-MML_API mml_int
+MML_API int
 mml_parse_int(struct mml_lexer *lexer)
 {
     struct mml_token tok;
@@ -1578,7 +1581,7 @@ mml_parse_int(struct mml_lexer *lexer)
     return mml_token_to_int(&tok);
 }
 
-MML_API mml_bool
+MML_API int
 mml_parse_bool(struct mml_lexer *lexer)
 {
     struct mml_token tok;
@@ -1593,7 +1596,7 @@ mml_parse_bool(struct mml_lexer *lexer)
     return (mml_token_to_int(&tok) != 0);
 }
 
-MML_API mml_float
+MML_API float
 mml_parse_float(struct mml_lexer *lexer)
 {
     struct mml_token tok;
@@ -1607,7 +1610,7 @@ mml_parse_float(struct mml_lexer *lexer)
     }
     if (tok.type == MML_TOKEN_PUNCTUATION && tok.str[0] == '-') {
         mml_expect_type(lexer, MML_TOKEN_NUMBER, 0, &tok);
-        return -(mml_float)tok.value.f;
+        return -(float)tok.value.f;
     } else if (tok.type != MML_TOKEN_NUMBER) {
         if (lexer->log) {
             lexer->log(lexer->userdata, MML_ERROR, lexer->line,

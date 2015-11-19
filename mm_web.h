@@ -21,16 +21,36 @@ ABOUT:
     this is fine. You can still run wby in a background thread at your
     discretion if this is a problem.
 
-QUICK:
-    To use this file do:
-    #define MMW_IMPLEMENTATION
-    before you include this file in *one* C or C++ file to create the implementation
+DEFINES:
+    MMW_IMPLEMENTATION
+        Generates the implementation of the library into the included file.
+        If not provided the library is in header only mode and can be included
+        in other headers or source files without problems. But only ONE file
+        should hold the implementation.
 
-    If you want to keep the implementation in that file you have to do
-    #define MMW_STATIC before including this file
+    MMW_STATIC
+        The generated implementation will stay private inside implementation
+        file and all internal symbols and functions will only be visible inside
+        that file.
 
-    If you want to use asserts to add validation add
-    #define MMW_ASSERT before including this file
+    MMW_ASSERT
+    MMW_USE_ASSERT
+        If you define MMW_USE_ASSERT without defining MM_ASSERT mm_web.h
+        will use assert.h and asssert(). Otherwise it will use your assert
+        method. If you do not define MMW_USE_ASSERT no additional checks
+        will be added. This is the only C standard library function used
+        by mm_web.
+
+    MMW_UINT_PTR
+        If your compiler is C99 you do not need to define this.
+        Otherwise, mm_web will try default assignments for them
+        and validate them at compile time. If they are incorrect, you will
+        get compile errors and will need to define them yourself.
+
+        You can define this to 'size_t' if you use the standard library,
+        otherwise it needs to be able to hold the maximum addressable memory
+        space. If you do not define this it will default to unsigned long.
+
 
 LICENSE: (BSD)
     Copyright (c) 2015, Andreas Fredriksson, Micha Mettke
@@ -89,7 +109,7 @@ EXAMPLES:
     for a actual working example please look inside tests/mmw_test.c */
 #if 0
 /* request and websocket handling callback */
-static mmw_int dispatch(struct mmw_con *connection, void *pArg);
+static int dispatch(struct mmw_con *connection, void *pArg);
 static int websocket_connect(struct mmw_con *conn, void *pArg);
 static void websocket_connected(struct mmw_con *con, void *pArg);
 static int websocket_frame(struct mmw_con *conn, const struct mmw_frame *frame, void *pArg);
@@ -114,7 +134,7 @@ int main(int argc, const char * argv[])
 
     /* compute and allocate needed memory and start server */
     struct mmw_server server;
-    mmw_size needed_memory;
+    size_t needed_memory;
     mmw_server_init(&server, &config, &needed_memory);
     void *memory = calloc(needed_memory, 1);
     mmw_server_start(&server, memory);
@@ -144,32 +164,19 @@ extern "C" {
 #define MMW_API extern
 #endif
 
-#ifdef MMW_USE_FIXED_TYPES
-/* setting this define adds header <stdint.h> for fixed sized types
- * if not wanted each type has to be set to the correct size*/
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
 #include <stdint.h>
-typedef int16_t mmw_short;
-typedef int32_t mmw_int;
-typedef int32_t mmw_bool;
-typedef int64_t mmw_long;
-typedef uint16_t mmw_ushort;
-typedef uint32_t mmw_uint;
-typedef uint64_t mmw_ulong;
-typedef uint8_t mmw_byte;
-typedef uint64_t mmw_size;
-typedef uint64_t mmw_ptr;
-#else
-typedef short mmw_short;
-typedef int mmw_int;
-typedef int mmw_bool;
-typedef long mmw_long;
-typedef unsigned short mmw_ushort;
-typedef unsigned int mmw_uint;
-typedef unsigned long mmw_ulong;
-typedef unsigned char mmw_byte;
-typedef unsigned long mmw_size;
-typedef unsigned long mmw_ptr;
+#ifndef MMW_UINT_PTR
+#define MMW_UINT_PTR uintptr_t
 #endif
+#else
+#ifndef MMW_UINT_PTR
+#define MMW_UINT_PTR unsigned long
+#endif
+#endif
+typedef unsigned char mmw_byte;
+typedef MMW_UINT_PTR mmw_size;
+typedef MMW_UINT_PTR mmw_ptr;
 
 #define MMW_OK (0)
 #define MMW_FLAG(x) (1 << (x))
@@ -193,9 +200,9 @@ struct mmw_request {
     /* The used HTTP version */
     const char *query_params;
     /* The query parameters passed in the URL, or NULL if none were passed. */
-    mmw_int content_length;
+    int content_length;
     /* The number of bytes of request body that are available via WebbyRead() */
-    mmw_int header_count;
+    int header_count;
     /* The number of headers */
     struct mmw_header headers[MMW_MAX_HEADERS];
     /* Request headers */
@@ -215,7 +222,7 @@ struct mmw_frame {
     mmw_byte header_size;
     mmw_byte padding_;
     mmw_byte mask_key[4];
-    mmw_int payload_length;
+    int payload_length;
 };
 
 enum mmw_websock_flags {
@@ -239,9 +246,9 @@ struct mmw_config {
     /* userdata which will be passed */
     const char *address;
     /* The bind address. Must be a textual IP address. */
-    mmw_ushort port;
+    unsigned short port;
     /* The port to listen to. */
-    mmw_uint connection_max;
+    unsigned int connection_max;
     /* Maximum number of simultaneous connections. */
     mmw_size request_buffer_size;
     /* The size of the request buffer. This must be big enough to contain all
@@ -252,13 +259,13 @@ struct mmw_config {
     * choice for this buffer.*/
     mmw_log_f log;
     /* Optional callback function that receives debug log text (without newlines). */
-    mmw_int(*dispatch)(struct mmw_con *con, void *userdata);
+    int(*dispatch)(struct mmw_con *con, void *userdata);
     /* Request dispatcher function. This function is called when the request
     * structure is ready.
     * If you decide to handle the request, call mmw_response_begin(),
     * mmw_write() and mmw_response_end() and then return 0. Otherwise, return a
     * non-zero value to have Webby send back a 404 response. */
-    mmw_int(*ws_connect)(struct mmw_con*, void *userdata);
+    int(*ws_connect)(struct mmw_con*, void *userdata);
     /*WebSocket connection dispatcher. Called when an incoming request wants to
     * update to a WebSocket connection.
     * Return 0 to allow the connection.
@@ -295,7 +302,7 @@ MMW_API void mmw_server_init(struct mmw_server*, const struct mmw_config*,
     Output:
     -   needed memory for the server to run
 */
-MMW_API mmw_int mmw_server_start(struct mmw_server*, void *memory);
+MMW_API int mmw_server_start(struct mmw_server*, void *memory);
 /*  this function starts running the server in the specificed memory space. Size
  *  must be at least big enough as determined in the mmw_server_init().
     Input:
@@ -305,8 +312,8 @@ MMW_API void mmw_server_update(struct mmw_server*);
 /* updates the server by being called frequenctly (at least once a frame) */
 MMW_API void mmw_server_stop(struct mmw_server*);
 /* stops and shutdown the server */
-MMW_API mmw_int mmw_response_begin(struct mmw_con*, mmw_int status_code, mmw_int content_length,
-                                    const struct mmw_header headers[], mmw_int header_count);
+MMW_API int mmw_response_begin(struct mmw_con*, int status_code, int content_length,
+                                    const struct mmw_header headers[], int header_count);
 /*  this function begins a response
     Input:
     -   HTTP status code to send. (Normally 200).
@@ -320,7 +327,7 @@ MMW_API void mmw_response_end(struct mmw_con*);
 /*  this function finishes a response. When you're done wirting the response
  *  body, call this function. this makes sure chunked encoding is terminated
  *  correctly and that the connection is setup for reuse. */
-MMW_API mmw_int mmw_read(struct mmw_con*, void *ptr, mmw_size len);
+MMW_API int mmw_read(struct mmw_con*, void *ptr, mmw_size len);
 /*  this function reads data from the request body. Only read what the client
  *  has priovided (via content_length) parameter, or you will end up blocking
  *  forever.
@@ -328,7 +335,7 @@ MMW_API mmw_int mmw_read(struct mmw_con*, void *ptr, mmw_size len);
     - pointer to a memory block that will be filled
     - size of the memory block to fill
 */
-MMW_API mmw_int mmw_write(struct mmw_con*, const void *ptr, mmw_size len);
+MMW_API int mmw_write(struct mmw_con*, const void *ptr, mmw_size len);
 /*  this function writes a response data to the connection. If you're not using
  *  chunked encoding, be careful not to send more than the specified content
  *  length. You can call this function multiple times as long as the total
@@ -337,11 +344,11 @@ MMW_API mmw_int mmw_write(struct mmw_con*, const void *ptr, mmw_size len);
     - pointer to a memory block that will be send
     - size of the memory block to send
 */
-MMW_API mmw_int mmw_frame_begin(struct mmw_con*, mmw_int opcode);
+MMW_API int mmw_frame_begin(struct mmw_con*, int opcode);
 /*  this function begins an outgoing websocket frame */
-MMW_API mmw_int mmw_frame_end(struct mmw_con*);
+MMW_API int mmw_frame_end(struct mmw_con*);
 /*  this function finishes an outgoing websocket frame */
-MMW_API mmw_int mmw_find_query_var(const char *buf, const char *name, char *dst, mmw_size dst_len);
+MMW_API int mmw_find_query_var(const char *buf, const char *name, char *dst, mmw_size dst_len);
 /*  this function is a helper function to lookup a query parameter given a URL
  *  encoded string. Returns the size of the returned data, or -1 if the query
  *  var wasn't found. */
@@ -359,6 +366,8 @@ MMW_API const char* mmw_find_header(struct mmw_con*, const char *name);
  *
  * ===============================================================*/
 #ifdef MMW_IMPLEMENTATION
+
+typedef int mmw__check_ptr_size[(sizeof(void*) == sizeof(MMW_UINT_PTR)) ? 1 : -1];
 #define MMW_LEN(a) (sizeof(a)/sizeof((a)[0]))
 #define MMW_UNUSED(a) ((void)(a))
 
@@ -382,6 +391,7 @@ MMW_API const char* mmw_find_header(struct mmw_con*, const char *name);
 #define MMW_INTERN static
 #define MMW_GLOBAL static
 #define MMW_STORAGE static
+
 /* ===============================================================
  *                          UTIL
  * ===============================================================*/
@@ -408,11 +418,11 @@ mmw_dbg(mmw_log_f log, const char *fmt, ...)
     log(buffer);
 }
 
-MMW_INTERN mmw_int
-wb_peek_request_size(const mmw_byte *buf, mmw_int len)
+MMW_INTERN int
+wb_peek_request_size(const mmw_byte *buf, int len)
 {
-    mmw_int i;
-    mmw_int max = len - 3;
+    int i;
+    int max = len - 3;
     for (i = 0; i < max; ++i) {
         if ('\r' != buf[i + 0]) continue;
         if ('\n' != buf[i + 1]) continue;
@@ -436,18 +446,18 @@ mmw_skipws(char *p)
 }
 
 #define MMW_TOK_SKIPWS MMW_FLAG(0)
-MMW_INTERN mmw_int
-mmw_tok_inplace(char *buf, const char* separator, char *tokens[], mmw_int max, mmw_int flags)
+MMW_INTERN int
+mmw_tok_inplace(char *buf, const char* separator, char *tokens[], int max, int flags)
 {
     char *b = buf;
     char *e = buf;
-    mmw_int token_count = 0;
-    mmw_int separator_len = (mmw_int)strlen(separator);
+    int token_count = 0;
+    int separator_len = (int)strlen(separator);
     while (token_count < max) {
         if (flags & MMW_TOK_SKIPWS)
             b = mmw_skipws(b);
         if (NULL != (e = strstr(b, separator))) {
-            int len = (mmw_int) (e - b);
+            int len = (int) (e - b);
             if (len > 0)
                 tokens[token_count++] = b;
             *e = '\0';
@@ -462,7 +472,7 @@ mmw_tok_inplace(char *buf, const char* separator, char *tokens[], mmw_int max, m
 
 MMW_INTERN mmw_size
 mmw_make_websocket_header(mmw_byte buffer[10], mmw_byte opcode,
-    mmw_int payload_len, mmw_int fin)
+    int payload_len, int fin)
 {
     buffer[0] = (mmw_byte)((fin ? 0x80 : 0x00) | opcode);
     if (payload_len < 126) {
@@ -485,18 +495,18 @@ mmw_make_websocket_header(mmw_byte buffer[10], mmw_byte opcode,
     }
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_read_buffered_data(int *data_left, struct mmw_buffer* buffer,
     char **dest_ptr, mmw_size *dest_len)
 {
-    mmw_int offset, read_size;
-    mmw_int left = *data_left;
-    mmw_int len;
+    int offset, read_size;
+    int left = *data_left;
+    int len;
     if (left == 0)
         return 0;
 
-    len = (mmw_int) *dest_len;
-    offset = (mmw_int)buffer->used - left;
+    len = (int) *dest_len;
+    offset = (int)buffer->used - left;
     read_size = (len > left) ? left : len;
     memcpy(*dest_ptr, buffer->data + offset, (mmw_size)read_size);
 
@@ -512,7 +522,7 @@ mmw_read_buffered_data(int *data_left, struct mmw_buffer* buffer,
 #ifdef _WIN32
 #include <winsock2.h>
 typedef SOCKET mmw_socket;
-typedef mmw_int mmw_socklen;
+typedef int mmw_socklen;
 
 #if defined(__GNUC__)
 #define MMW_ALIGN(x) __attribute__((aligned(x)))
@@ -523,34 +533,34 @@ typedef mmw_int mmw_socklen;
 #define MMW_INVALID_SOCKET INVALID_SOCKET
 #define snprintf _snprintf
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_error(void)
 {
     return WSAGetLastError();
 }
 
 #if !defined(__GNUC__)
-MMW_INTERN mmw_int
+MMW_INTERN int
 strcasecmp(const char *a, const char *b)
 {
     return _stricmp(a, b);
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 strncasecmp(const char *a, const char *b, mmw_size len)
 {
     return _strnicmp(a, b, len);
 }
 #endif
 
-MMW_INTERN mmw_int
-mmw_socket_set_blocking(mmw_socket socket, mmw_int blocking)
+MMW_INTERN int
+mmw_socket_set_blocking(mmw_socket socket, int blocking)
 {
     u_long val = !blocking;
     return ioctlsocket(socket, FIONBIO, &val);
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_is_valid(mmw_socket socket)
 {
     return (INVALID_SOCKET != socket);
@@ -562,8 +572,8 @@ mmw_socket_close(mmw_socket socket)
     closesocket(socket);
 }
 
-MMW_INTERN mmw_int
-mmw_socket_is_blocking_error(mmw_int error)
+MMW_INTERN int
+mmw_socket_is_blocking_error(int error)
 {
     return WSAEWOULDBLOCK == error;
 }
@@ -581,19 +591,19 @@ mmw_socket_is_blocking_error(mmw_int error)
 #include <errno.h>
 #include <strings.h>
 
-typedef mmw_int mmw_socket;
+typedef int mmw_socket;
 typedef socklen_t mmw_socklen;
 
 #define MMW_ALIGN(x) __attribute__((aligned(x)))
 #define MMW_INVALID_SOCKET (-1)
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_error(void)
 {
     return errno;
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_is_valid(mmw_socket socket)
 {
     return (socket > 0);
@@ -605,53 +615,53 @@ mmw_socket_close(mmw_socket socket)
     close(socket);
 }
 
-MMW_INTERN mmw_int
-mmw_socket_is_blocking_error(mmw_int error)
+MMW_INTERN int
+mmw_socket_is_blocking_error(int error)
 {
     return (EAGAIN == error);
 }
 
-MMW_INTERN mmw_int
-mmw_socket_set_blocking(mmw_socket socket, mmw_int blocking)
+MMW_INTERN int
+mmw_socket_set_blocking(mmw_socket socket, int blocking)
 {
-    mmw_int flags = fcntl(socket, F_GETFL, 0);
+    int flags = fcntl(socket, F_GETFL, 0);
     if (flags < 0) return flags;
     flags = blocking ? (flags & ~O_NONBLOCK) : (flags | O_NONBLOCK);
     return fcntl(socket, F_SETFL, flags);
 }
 #endif
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_config_incoming(mmw_socket socket)
 {
-    mmw_int off = 0;
-    mmw_int err;
+    int off = 0;
+    int err;
     if ((err = mmw_socket_set_blocking(socket, 0)) != MMW_OK) return err;
-    setsockopt(socket, SOL_SOCKET, SO_LINGER, (const char*) &off, sizeof(mmw_int));
+    setsockopt(socket, SOL_SOCKET, SO_LINGER, (const char*) &off, sizeof(int));
     return 0;
 }
 
-MMW_INTERN mmw_int
-mmw_socket_send(mmw_socket socket, const mmw_byte *buffer, mmw_int size)
+MMW_INTERN int
+mmw_socket_send(mmw_socket socket, const mmw_byte *buffer, int size)
 {
     while (size > 0) {
-        mmw_long err = send(socket, (const char*)buffer, (mmw_size)size, 0);
+        long err = send(socket, (const char*)buffer, (mmw_size)size, 0);
         if (err <= 0) return 1;
         buffer += err;
-        size -= (mmw_int)err;
+        size -= (int)err;
     }
     return 0;
 }
 
 /* Read as much as possible without blocking while there is buffer space. */
 enum {MMW_FILL_OK, MMW_FILL_ERROR, MMW_FILL_FULL};
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_recv(mmw_socket socket, struct mmw_buffer *buf, mmw_log_f log)
 {
-    mmw_long err;
-    mmw_int buf_left;
+    long err;
+    int buf_left;
     for (;;) {
-        buf_left = (mmw_int)buf->max - (mmw_int)buf->used;
+        buf_left = (int)buf->max - (int)buf->used;
         mmw_dbg(log, "buffer space left = %d", buf_left);
         if (buf_left == 0)
             return MMW_FILL_FULL;
@@ -659,7 +669,7 @@ mmw_socket_recv(mmw_socket socket, struct mmw_buffer *buf, mmw_log_f log)
         /* Read what we can into the current buffer space. */
         err = recv(socket, (char*)buf->data + buf->used, (mmw_size)buf_left, 0);
         if (err < 0) {
-            mmw_int sock_err = mmw_socket_error();
+            int sock_err = mmw_socket_error();
             if (mmw_socket_is_blocking_error(sock_err)) {
                 return MMW_FILL_OK;
             } else {
@@ -675,11 +685,11 @@ mmw_socket_recv(mmw_socket socket, struct mmw_buffer *buf, mmw_log_f log)
     }
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_socket_flush(mmw_socket socket, struct mmw_buffer *buf)
 {
     if (buf->used > 0){
-        if (mmw_socket_send(socket, buf->data, (mmw_int)buf->used) != MMW_OK)
+        if (mmw_socket_send(socket, buf->data, (int)buf->used) != MMW_OK)
             return 1;
     }
     buf->used = 0;
@@ -699,9 +709,9 @@ mmw_socket_flush(mmw_socket socket, struct mmw_buffer *buf)
  */
 MMW_INTERN mmw_size
 mmw_url_decode(const char *src, mmw_size src_len, char *dst, mmw_size dst_len,
-    mmw_int is_form_url_encoded)
+    int is_form_url_encoded)
 {
-    mmw_int a, b;
+    int a, b;
     mmw_size i, j;
     #define HEXTOI(x) (isdigit(x) ? x - '0' : x - 'W')
     for (i = j = 0; i < src_len && j < dst_len - 1; i++, j++) {
@@ -723,12 +733,12 @@ mmw_url_decode(const char *src, mmw_size src_len, char *dst, mmw_size dst_len,
 }
 
 /* Pulled from mongoose */
-MMW_API mmw_int
+MMW_API int
 mmw_find_query_var(const char *buf, const char *name, char *dst, mmw_size dst_len)
 {
     const char *p, *e, *s;
     mmw_size name_len;
-    mmw_int len;
+    int len;
     mmw_size buf_len = strlen(buf);
 
     name_len = strlen(name);
@@ -749,7 +759,7 @@ mmw_find_query_var(const char *buf, const char *name, char *dst, mmw_size dst_le
             MMW_ASSERT(s >= p);
             /* Decode variable into destination buffer */
             if ((mmw_size) (s - p) < dst_len)
-                len = (mmw_int)mmw_url_decode(p, (mmw_size)(s - p), dst, dst_len, 1);
+                len = (int)mmw_url_decode(p, (mmw_size)(s - p), dst, dst_len, 1);
             break;
         }
     }
@@ -771,12 +781,12 @@ mmw_base64_bufsize(mmw_size input_size)
     return base_size + line_breaks + null_termination;
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_base64_encode(char* output, mmw_size output_size,
     const mmw_byte *input, mmw_size input_size)
 {
     mmw_size i = 0;
-    mmw_int line_out = 0;
+    int line_out = 0;
     MMW_STORAGE const char enc[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
@@ -785,11 +795,11 @@ mmw_base64_encode(char* output, mmw_size output_size,
         return 1;
 
     while (i < input_size) {
-        mmw_uint idx_0, idx_1, idx_2, idx_3;
-        mmw_uint i0;
+        unsigned int idx_0, idx_1, idx_2, idx_3;
+        unsigned int i0;
 
-        i0 = (mmw_uint)(input[i]) << 16; i++;
-        i0 |= (mmw_uint)(i < input_size ? input[i] : 0) << 8; i++;
+        i0 = (unsigned int)(input[i]) << 16; i++;
+        i0 |= (unsigned int)(i < input_size ? input[i] : 0) << 8; i++;
         i0 |= (i < input_size ? input[i] : 0); i++;
 
         idx_0 = (i0 & 0xfc0000) >> 18; i0 <<= 6;
@@ -818,31 +828,31 @@ mmw_base64_encode(char* output, mmw_size output_size,
  *                          SHA1
  * ---------------------------------------------------------------*/
 struct mmw_sha1 {
-    mmw_uint state[5];
-    mmw_uint msg_size[2];
+    unsigned int state[5];
+    unsigned int msg_size[2];
     mmw_size buf_used;
     mmw_byte buffer[64];
 };
 
-MMW_INTERN mmw_uint
-mmw_sha1_rol(mmw_uint value, mmw_uint bits)
+MMW_INTERN unsigned int
+mmw_sha1_rol(unsigned int value, unsigned int bits)
 {
     return ((value) << bits) | (value >> (32 - bits));
 }
 
 MMW_INTERN void
-mmw_sha1_hash_block(mmw_uint state[5], const mmw_byte *block)
+mmw_sha1_hash_block(unsigned int state[5], const mmw_byte *block)
 {
-    mmw_int i;
-    mmw_uint a, b, c, d, e;
-    mmw_uint w[80];
+    int i;
+    unsigned int a, b, c, d, e;
+    unsigned int w[80];
 
     /* Prepare message schedule */
     for (i = 0; i < 16; ++i) {
-        w[i] =  (((mmw_uint)block[(i*4)+0]) << 24) |
-                (((mmw_uint)block[(i*4)+1]) << 16) |
-                (((mmw_uint)block[(i*4)+2]) <<  8) |
-                (((mmw_uint)block[(i*4)+3]) <<  0);
+        w[i] =  (((unsigned int)block[(i*4)+0]) << 24) |
+                (((unsigned int)block[(i*4)+1]) << 16) |
+                (((unsigned int)block[(i*4)+2]) <<  8) |
+                (((unsigned int)block[(i*4)+3]) <<  0);
     }
 
     for (i = 16; i < 80; ++i)
@@ -853,7 +863,7 @@ mmw_sha1_hash_block(mmw_uint state[5], const mmw_byte *block)
     /* This is the core loop for each 20-word span. */
     #define SHA1_LOOP(start, end, func, constant) \
         for (i = (start); i < (end); ++i) { \
-            mmw_uint t = mmw_sha1_rol(a, 5) + (func) + e + (constant) + w[i]; \
+            unsigned int t = mmw_sha1_rol(a, 5) + (func) + e + (constant) + w[i]; \
             e = d; d = c; c = mmw_sha1_rol(b, 30); b = a; a = t;}
 
     SHA1_LOOP( 0, 20, ((b & c) ^ (~b & d)),           0x5a827999)
@@ -883,8 +893,8 @@ MMW_INTERN void
 mmw_sha1_update(struct mmw_sha1 *s, const void *data_, mmw_size size)
 {
     const char *data = (const char*)data_;
-    mmw_uint size_lo;
-    mmw_uint size_lo_orig;
+    unsigned int size_lo;
+    unsigned int size_lo_orig;
     mmw_size remain = size;
 
     while (remain > 0) {
@@ -902,7 +912,7 @@ mmw_sha1_update(struct mmw_sha1 *s, const void *data_, mmw_size size)
     }
 
     size_lo = size_lo_orig = s->msg_size[1];
-    size_lo += (mmw_uint)(size * 8);
+    size_lo += (unsigned int)(size * 8);
     if (size_lo < size_lo_orig)
         s->msg_size[0] += 1;
     s->msg_size[1] = size_lo;
@@ -914,11 +924,11 @@ mmw_sha1_final(mmw_byte digest[20], struct mmw_sha1 *s)
     mmw_byte zero = 0x00;
     mmw_byte one_bit = 0x80;
     mmw_byte count_data[8];
-    mmw_int i;
+    int i;
 
     /* Generate size data in bit endian format */
     for (i = 0; i < 8; ++i) {
-        mmw_uint word = s->msg_size[i >> 2];
+        unsigned int word = s->msg_size[i >> 2];
         count_data[i] = (mmw_byte)(word >> ((3 - (i & 3)) * 8));
     }
 
@@ -935,7 +945,7 @@ mmw_sha1_final(mmw_byte digest[20], struct mmw_sha1 *s)
 
     /* Generate digest */
     for (i = 0; i < 20; ++i) {
-        mmw_uint word = s->state[i >> 2];
+        unsigned int word = s->state[i >> 2];
         mmw_byte byte = (mmw_byte) ((word >> ((3 - (i & 3)) * 8)) & 0xff);
         digest[i] = byte;
     }
@@ -969,30 +979,30 @@ enum mmw_connection_state {
 
 struct mmw_connection {
     struct mmw_con public_data;
-    mmw_ushort flags;
-    mmw_ushort state;
+    unsigned short flags;
+    unsigned short state;
     mmw_ptr socket;
     mmw_log_f log;
     mmw_size request_buffer_size;
     mmw_size io_buffer_size;
     struct mmw_buffer header_buf;
     struct mmw_buffer io_buf;
-    mmw_int header_body_left;
-    mmw_int io_data_left;
-    mmw_int continue_data_left;
-    mmw_int body_bytes_read;
+    int header_body_left;
+    int io_data_left;
+    int continue_data_left;
+    int body_bytes_read;
     struct mmw_frame ws_frame;
     mmw_byte ws_opcode;
     mmw_size blocking_count;
 };
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_connection_set_blocking(struct mmw_connection *conn)
 {
     if (conn->blocking_count == 0) {
         if (mmw_socket_set_blocking(MMW_SOCK(conn->socket), 1) != MMW_OK) {
             mmw_dbg(conn->log, "failed to switch connection to blocking");
-            conn->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+            conn->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
             return -1;
         }
     }
@@ -1000,14 +1010,14 @@ mmw_connection_set_blocking(struct mmw_connection *conn)
     return 0;
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_connection_set_nonblocking(struct mmw_connection *conn)
 {
     mmw_size count = conn->blocking_count;
     if (count == 1) {
         if (mmw_socket_set_blocking(MMW_SOCK(conn->socket), 0) != MMW_OK) {
             mmw_dbg(conn->log, "failed to switch connection to non-blocking");
-            conn->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+            conn->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
             return -1;
         }
     }
@@ -1042,17 +1052,17 @@ mmw_connection_close(struct mmw_connection* connection)
     connection->flags = 0;
 }
 
-MMW_INTERN mmw_int
-mmw_connection_setup_request(struct mmw_connection *connection, mmw_int request_size)
+MMW_INTERN int
+mmw_connection_setup_request(struct mmw_connection *connection, int request_size)
 {
     char* lines[MMW_MAX_HEADERS + 2];
-    mmw_int line_count;
+    int line_count;
     char* tok[16];
     char* query_params;
-    mmw_int tok_count;
+    int tok_count;
 
-    mmw_int i;
-    mmw_int header_count;
+    int i;
+    int header_count;
     char *buf = (char*) connection->header_buf.data;
     struct mmw_request *req = &connection->public_data.request;
 
@@ -1061,7 +1071,7 @@ mmw_connection_setup_request(struct mmw_connection *connection, mmw_int request_
     /* Split header into lines */
     line_count = mmw_tok_inplace(buf, "\r\n", lines, MMW_LEN(lines), 0);
     header_count = line_count - 2;
-    if (line_count < 1 || header_count > (mmw_int) MMW_LEN(req->headers))
+    if (line_count < 1 || header_count > (int) MMW_LEN(req->headers))
         return 1;
 
     /* Parse request line */
@@ -1093,7 +1103,7 @@ mmw_connection_setup_request(struct mmw_connection *connection, mmw_int request_
         req->headers[i].value = tok[1];
 
         if (!strcasecmp("content-length", tok[0])) {
-            req->content_length = (mmw_int)strtoul(tok[1], NULL, 10);
+            req->content_length = (int)strtoul(tok[1], NULL, 10);
             mmw_dbg(connection->log, "request has body; content length is %d", req->content_length);
         } else if (!strcasecmp("transfer-encoding", tok[0])) {
             mmw_dbg(connection->log, "cowardly refusing to handle Transfer-Encoding: %s", tok[1]);
@@ -1104,7 +1114,7 @@ mmw_connection_setup_request(struct mmw_connection *connection, mmw_int request_
     return 0;
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_connection_send_websocket_upgrade(struct mmw_connection* connection)
 {
     const char *hdr;
@@ -1150,8 +1160,8 @@ mmw_connection_send_websocket_upgrade(struct mmw_connection* connection)
     return 0;
 }
 
-MMW_INTERN mmw_int
-mmw_connection_push(struct mmw_connection *conn, const void *data_, mmw_int len)
+MMW_INTERN int
+mmw_connection_push(struct mmw_connection *conn, const void *data_, int len)
 {
     struct mmw_buffer *buf = &conn->io_buf;
     const mmw_byte* data = (const mmw_byte*)data_;
@@ -1163,8 +1173,8 @@ mmw_connection_push(struct mmw_connection *conn, const void *data_, mmw_int len)
         return mmw_socket_flush(MMW_SOCK(conn->socket), buf);
 
     while (len > 0) {
-        mmw_int buf_space = (mmw_int)buf->max - (mmw_int)buf->used;
-        mmw_int copy_size = len < buf_space ? len : buf_space;
+        int buf_space = (int)buf->max - (int)buf->used;
+        int copy_size = len < buf_space ? len : buf_space;
         memcpy(buf->data + buf->used, data, (mmw_size)copy_size);
         buf->used += (mmw_size)copy_size;
 
@@ -1183,12 +1193,12 @@ mmw_connection_push(struct mmw_connection *conn, const void *data_, mmw_int len)
 /* ---------------------------------------------------------------
  *                          CON/REQUEST
  * ---------------------------------------------------------------*/
-MMW_INTERN mmw_int
-mmw_con_discard_incoming_data(struct mmw_con* conn, mmw_int count)
+MMW_INTERN int
+mmw_con_discard_incoming_data(struct mmw_con* conn, int count)
 {
     while (count > 0) {
         char buffer[1024];
-        mmw_int read_size = (mmw_int)(((mmw_size)count > sizeof(buffer)) ?
+        int read_size = (int)(((mmw_size)count > sizeof(buffer)) ?
             sizeof(buffer) : (mmw_size)count);
         if (mmw_read(conn, buffer, (mmw_size)read_size) != MMW_OK)
             return -1;
@@ -1200,7 +1210,7 @@ mmw_con_discard_incoming_data(struct mmw_con* conn, mmw_int count)
 MMW_API const char*
 mmw_find_header(struct mmw_con *conn, const char *name)
 {
-    mmw_int i, count;
+    int i, count;
     for (i = 0, count = conn->request.header_count; i < count; ++i) {
         if (!strcasecmp(conn->request.headers[i].name, name))
             return conn->request.headers[i].value;
@@ -1208,7 +1218,7 @@ mmw_find_header(struct mmw_con *conn, const char *name)
     return NULL;
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_con_is_websocket_request(struct mmw_con* conn)
 {
     const char *hdr;
@@ -1219,18 +1229,18 @@ mmw_con_is_websocket_request(struct mmw_con* conn)
     return 1;
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_scan_websocket_frame(struct mmw_frame *frame, const struct mmw_buffer *buf)
 {
     mmw_byte flags = 0;
-    mmw_uint len = 0;
-    mmw_uint opcode = 0;
+    unsigned int len = 0;
+    unsigned int opcode = 0;
     mmw_byte* data = buf->data;
     mmw_byte* data_max = data + buf->used;
 
-    mmw_int i;
-    mmw_int len_bytes = 0;
-    mmw_int mask_bytes = 0;
+    int i;
+    int len_bytes = 0;
+    int mask_bytes = 0;
     mmw_byte header0, header1;
     if (buf->used < 2)
         return -1;
@@ -1269,12 +1279,12 @@ mmw_scan_websocket_frame(struct mmw_frame *frame, const struct mmw_buffer *buf)
     frame->header_size = (mmw_byte) (data - buf->data);
     frame->flags = flags;
     frame->opcode = (mmw_byte) opcode;
-    frame->payload_length = (mmw_int)len;
+    frame->payload_length = (int)len;
     return 0;
 }
 
-MMW_API mmw_int
-mmw_frame_begin(struct mmw_con *conn_pub, mmw_int opcode)
+MMW_API int
+mmw_frame_begin(struct mmw_con *conn_pub, int opcode)
 {
     struct mmw_connection *conn = (struct mmw_connection*)conn_pub;
     conn->ws_opcode = (mmw_byte) opcode;
@@ -1282,27 +1292,27 @@ mmw_frame_begin(struct mmw_con *conn_pub, mmw_int opcode)
     return mmw_connection_set_blocking(conn);
 }
 
-MMW_API mmw_int
+MMW_API int
 mmw_frame_end(struct mmw_con *conn_pub)
 {
     mmw_byte header[10];
     mmw_size header_size;
     struct mmw_connection *conn = (struct mmw_connection*) conn_pub;
     header_size = mmw_make_websocket_header(header, conn->ws_opcode, 0, 1);
-    if (mmw_socket_send(MMW_SOCK(conn->socket), header, (mmw_int) header_size) != MMW_OK)
-        conn->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+    if (mmw_socket_send(MMW_SOCK(conn->socket), header, (int) header_size) != MMW_OK)
+        conn->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
     /* Switch socket to non-blocking mode */
     return mmw_connection_set_nonblocking(conn);
 }
 
-MMW_API mmw_int
+MMW_API int
 mmw_read(struct mmw_con *conn, void *ptr_, mmw_size len)
 {
     struct mmw_connection* conn_prv = (struct mmw_connection*)conn;
     char *ptr = (char*) ptr_;
-    mmw_int count;
+    int count;
 
-    mmw_int start_pos = conn_prv->body_bytes_read;
+    int start_pos = conn_prv->body_bytes_read;
     if (conn_prv->header_body_left > 0) {
         count = mmw_read_buffered_data(&conn_prv->header_body_left, &conn_prv->header_buf, &ptr, &len);
         conn_prv->body_bytes_read += count;
@@ -1315,19 +1325,19 @@ mmw_read(struct mmw_con *conn, void *ptr_, mmw_size len)
     }
 
     while (len > 0) {
-        mmw_long err = recv(MMW_SOCK(conn_prv->socket), ptr, (mmw_size)len, 0);
+        long err = recv(MMW_SOCK(conn_prv->socket), ptr, (mmw_size)len, 0);
         if (err < 0) {
-            conn_prv->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
-            return (mmw_int)err;
+            conn_prv->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
+            return (int)err;
         }
         len -= (mmw_size)err;
         ptr += (mmw_size)err;
-        conn_prv->body_bytes_read += (mmw_int)err;
+        conn_prv->body_bytes_read += (int)err;
     }
 
     if ((conn_prv->flags & MMW_CON_FLAG_WEBSOCKET) && (conn_prv->ws_frame.flags & MMW_WSF_MASKED)) {
         /* XOR outgoing data with websocket ofuscation key */
-        mmw_int i, end_pos = conn_prv->body_bytes_read;
+        int i, end_pos = conn_prv->body_bytes_read;
         const mmw_byte *mask = conn_prv->ws_frame.mask_key;
         ptr = (char*) ptr_; /* start over */
         for (i = start_pos; i < end_pos; ++i) {
@@ -1338,39 +1348,39 @@ mmw_read(struct mmw_con *conn, void *ptr_, mmw_size len)
     return 0;
 }
 
-MMW_API mmw_int
+MMW_API int
 mmw_write(struct mmw_con *conn, const void *ptr, mmw_size len)
 {
     struct mmw_connection *conn_priv = (struct mmw_connection*) conn;
     if (conn_priv->flags & MMW_CON_FLAG_WEBSOCKET) {
         mmw_byte header[10];
         mmw_size header_size;
-        header_size = mmw_make_websocket_header(header, conn_priv->ws_opcode, (mmw_int)len, 0);
+        header_size = mmw_make_websocket_header(header, conn_priv->ws_opcode, (int)len, 0);
 
         /* Overwrite opcode to be continuation packages from here on out */
         conn_priv->ws_opcode = MMW_WSOP_CONTINUATION;
-        if (mmw_socket_send(MMW_SOCK(conn_priv->socket), header, (mmw_int)header_size) != MMW_OK) {
-            conn_priv->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+        if (mmw_socket_send(MMW_SOCK(conn_priv->socket), header, (int)header_size) != MMW_OK) {
+            conn_priv->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
             return -1;
         }
-        if (mmw_socket_send(MMW_SOCK(conn_priv->socket),(const mmw_byte*)ptr, (mmw_int)len) != MMW_OK) {
-            conn_priv->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+        if (mmw_socket_send(MMW_SOCK(conn_priv->socket),(const mmw_byte*)ptr, (int)len) != MMW_OK) {
+            conn_priv->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
             return -1;
         }
         return 0;
     } else if (conn_priv->flags & MMW_CON_FLAG_CHUNKED_RESPONSE) {
         char chunk_header[128];
-        mmw_int header_len = snprintf(chunk_header, sizeof chunk_header, "%x\r\n", (mmw_int) len);
+        int header_len = snprintf(chunk_header, sizeof chunk_header, "%x\r\n", (int) len);
         mmw_connection_push(conn_priv, chunk_header, header_len);
-        mmw_connection_push(conn_priv, ptr, (mmw_int)len);
+        mmw_connection_push(conn_priv, ptr, (int)len);
         return mmw_connection_push(conn_priv, "\r\n", 2);
-    } else return mmw_connection_push(conn_priv, ptr, (mmw_int) len);
+    } else return mmw_connection_push(conn_priv, ptr, (int) len);
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_printf(struct mmw_con* conn, const char* fmt, ...)
 {
-    mmw_int len;
+    int len;
     char buffer[1024];
     va_list args;
     va_start(args, fmt);
@@ -1436,26 +1446,26 @@ MMW_GLOBAL const char* mmw_status_text[] = {
 };
 
 MMW_INTERN const char*
-mmw_response_status_text(mmw_int status_code)
+mmw_response_status_text(int status_code)
 {
-    mmw_int i;
-    for (i = 0; i < (mmw_int) MMW_LEN(mmw_status_nums); ++i) {
+    int i;
+    for (i = 0; i < (int) MMW_LEN(mmw_status_nums); ++i) {
         if (mmw_status_nums[i] == status_code)
             return mmw_status_text[i];
     }
     return "Unknown";
 }
 
-MMW_API mmw_int
-mmw_response_begin(struct mmw_con *conn_pub, mmw_int status_code, mmw_int content_length,
-    const struct mmw_header *headers, mmw_int header_count)
+MMW_API int
+mmw_response_begin(struct mmw_con *conn_pub, int status_code, int content_length,
+    const struct mmw_header *headers, int header_count)
 {
-    mmw_int i = 0;
+    int i = 0;
     struct mmw_connection *conn = (struct mmw_connection *)conn_pub;
-    if (conn->body_bytes_read < (mmw_int)conn->public_data.request.content_length) {
-        mmw_int body_left = conn->public_data.request.content_length - (mmw_int)conn->body_bytes_read;
+    if (conn->body_bytes_read < (int)conn->public_data.request.content_length) {
+        int body_left = conn->public_data.request.content_length - (int)conn->body_bytes_read;
         if (mmw_con_discard_incoming_data(conn_pub, body_left) != MMW_OK) {
-            conn->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+            conn->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
             return -1;
         }
     }
@@ -1495,7 +1505,7 @@ mmw_response_end(struct mmw_con *conn)
     if (conn_priv->flags & MMW_CON_FLAG_CHUNKED_RESPONSE) {
         /* Write final chunk */
         mmw_connection_push(conn_priv, "0\r\n\r\n", 5);
-        conn_priv->flags &= (mmw_ushort)~MMW_CON_FLAG_CHUNKED_RESPONSE;
+        conn_priv->flags &= (unsigned short)~MMW_CON_FLAG_CHUNKED_RESPONSE;
     }
     /* Flush buffers */
     mmw_connection_push(conn_priv, "", 0);
@@ -1555,7 +1565,7 @@ mmw_server_init(struct mmw_server *srv, const struct mmw_config *cfg, mmw_size *
     srv->memory_size = *needed_memory;
 }
 
-MMW_API mmw_int
+MMW_API int
 mmw_server_start(struct mmw_server *server, void *memory)
 {
     mmw_size i;
@@ -1588,7 +1598,7 @@ mmw_server_start(struct mmw_server *server, void *memory)
 
     /* server socket setup */
     sock = (mmw_ptr)socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    mmw_dbg(server->config.log, "Server socket = %d", (mmw_int)sock);
+    mmw_dbg(server->config.log, "Server socket = %d", (int)sock);
     if (!mmw_socket_is_valid(sock)) {
         mmw_dbg(server->config.log, "failed to initialized server socket: %d", mmw_socket_error());
         goto error;
@@ -1603,7 +1613,7 @@ mmw_server_start(struct mmw_server *server, void *memory)
     mmw_dbg(server->config.log, "binding to %s:%d", server->config.address, server->config.port);
     memset(&bind_addr, 0, sizeof(bind_addr));
     bind_addr.sin_family = AF_INET;
-    bind_addr.sin_port = htons((mmw_ushort)server->config.port);
+    bind_addr.sin_port = htons((unsigned short)server->config.port);
     bind_addr.sin_addr.s_addr = inet_addr(server->config.address);
     if (bind(sock, (struct sockaddr*) &bind_addr, sizeof(bind_addr)) != MMW_OK) {
         mmw_dbg(server->config.log, "bind() failed: %d", mmw_socket_error());
@@ -1636,7 +1646,7 @@ mmw_server_stop(struct mmw_server *srv)
         mmw_socket_close(MMW_SOCK(srv->con[i].socket));
 }
 
-MMW_INTERN mmw_int
+MMW_INTERN int
 mmw_server_on_incoming(struct mmw_server *srv)
 {
     mmw_size connection_index;
@@ -1684,7 +1694,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
 {
     /* This is no longer a fresh connection. Only read from it when select() says
     * so in the future. */
-    connection->flags &= (mmw_ushort)~MMW_CON_FLAG_FRESH_CONNECTION;
+    connection->flags &= (unsigned short)~MMW_CON_FLAG_FRESH_CONNECTION;
     for (;;)
     {
         switch (connection->state) {
@@ -1695,19 +1705,19 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
             int result = mmw_socket_recv(MMW_SOCK(connection->socket),
                 &connection->header_buf, srv->config.log);
             if (MMW_FILL_ERROR == result) {
-                connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                 return;
             }
 
             /* Scan to see if the buffer has a complete HTTP request header package. */
             request_size = wb_peek_request_size(connection->header_buf.data,
-                (mmw_int)connection->header_buf.used);
+                (int)connection->header_buf.used);
             if (request_size < 0) {
                 /* Nothing yet. */
                 if (connection->header_buf.max == connection->header_buf.used) {
                     mmw_dbg(srv->config.log, "giving up as buffer is full");
                     /* Give up, we can't fit the request in our buffer. */
-                    connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                    connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                 }
                 return;
             }
@@ -1717,17 +1727,17 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
             /* Set up request data. */
             if (mmw_connection_setup_request(connection, request_size) != MMW_OK) {
                 mmw_dbg(srv->config.log, "failed to set up request");
-                connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                 return;
             }
 
             /* Remember how much of the remaining buffer is body data. */
-            connection->header_body_left = (mmw_int)connection->header_buf.used - request_size;
+            connection->header_body_left = (int)connection->header_buf.used - request_size;
             /* If the client expects a 100 Continue, send one now. */
             if (NULL != (expect_header = mmw_find_header(&connection->public_data, "Expect"))) {
                 if (!strcasecmp(expect_header, "100-continue")) {
                     mmw_dbg(srv->config.log, "connection expects a 100 Continue header.. making him happy");
-                    connection->continue_data_left = (mmw_int)mmw_continue_header_len;
+                    connection->continue_data_left = (int)mmw_continue_header_len;
                     connection->state = MMW_CON_STATE_SEND_CONTINUE;
                 } else {
                     mmw_dbg(srv->config.log, "unrecognized Expected header %s", expect_header);
@@ -1737,18 +1747,18 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
         } break; /* MMW_REQUEST */
 
         case MMW_CON_STATE_SEND_CONTINUE: {
-            mmw_int left = connection->continue_data_left;
-            mmw_int offset = (mmw_int)mmw_continue_header_len - left;
-            mmw_long written = 0;
+            int left = connection->continue_data_left;
+            int offset = (int)mmw_continue_header_len - left;
+            long written = 0;
 
             written = send(MMW_SOCK(connection->socket), mmw_continue_header + offset, (mmw_size)left, 0);
             mmw_dbg(srv->config.log, "continue write: %d bytes", written);
             if (written < 0) {
                 mmw_dbg(srv->config.log, "failed to write 100-continue header");
-                connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                 return;
             }
-            left -= (mmw_int)written;
+            left -= (int)written;
             connection->continue_data_left = left;
             if (left == 0)
                 connection->state = MMW_CON_STATE_SERVE;
@@ -1785,7 +1795,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
                         /* OK, we're now a websocket */
                         connection->flags |= MMW_CON_FLAG_WEBSOCKET;
                         mmw_dbg(srv->config.log, "connection %d upgraded to websocket",
-                            (mmw_int)(connection - srv->con));
+                            (int)(connection - srv->con));
                         srv->config.ws_connected(&connection->public_data, srv->config.userdata);
                     }
                 }
@@ -1802,7 +1812,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
             /* Ready for another request, unless we should close the connection. */
             if (connection->flags & MMW_CON_FLAG_ALIVE) {
                 if (connection->flags & MMW_CON_FLAG_CLOSE_AFTER_RESPONSE) {
-                    connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                    connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                     return;
                 } else {
                     /* Reset connection for next request. */
@@ -1828,7 +1838,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
             if (MMW_FILL_ERROR == mmw_socket_recv(MMW_SOCK(connection->socket),
                 &connection->io_buf, srv->config.log)) {
                 /* Give up on this connection */
-                connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                 return;
             }
 
@@ -1836,9 +1846,9 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
                 return;
 
             connection->body_bytes_read = 0;
-            connection->io_data_left = (mmw_int)connection->io_buf.used - connection->ws_frame.header_size;
+            connection->io_data_left = (int)connection->io_buf.used - connection->ws_frame.header_size;
             mmw_dbg(srv->config.log, "%d bytes of incoming websocket data buffered",
-                (mmw_int)connection->io_data_left);
+                (int)connection->io_data_left);
 
             /* Switch socket to blocking mode */
             if (mmw_connection_set_blocking(connection) != MMW_OK)
@@ -1848,14 +1858,14 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
             {
             case MMW_WSOP_CLOSE:
                 mmw_dbg(srv->config.log, "received websocket close request");
-                connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                 return;
 
               case MMW_WSOP_PING:
                 mmw_dbg(srv->config.log, "received websocket ping request");
                 if (mmw_socket_send(MMW_SOCK(connection->socket), mmw_websocket_pong,
                     sizeof mmw_websocket_pong)){
-                    connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                    connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                     return;
                 }
                 break;
@@ -1864,7 +1874,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
                 /* Dispatch frame to user handler. */
                 if (srv->config.ws_frame(&connection->public_data,
                     &connection->ws_frame, srv->config.userdata) != MMW_OK) {
-                  connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                  connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                   return;
                 }
             }
@@ -1873,7 +1883,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
             if (connection->body_bytes_read < connection->ws_frame.payload_length) {
                 int size = connection->ws_frame.payload_length - connection->body_bytes_read;
                 if (mmw_con_discard_incoming_data(&connection->public_data, size) != MMW_OK) {
-                    connection->flags &= (mmw_ushort)~MMW_CON_FLAG_ALIVE;
+                    connection->flags &= (unsigned short)~MMW_CON_FLAG_ALIVE;
                     return;
                 }
             }
@@ -1892,7 +1902,7 @@ mmw_server_update_connection(struct mmw_server *srv, struct mmw_connection* conn
 MMW_API void
 mmw_server_update(struct mmw_server *srv)
 {
-    mmw_int err;
+    int err;
     mmw_size i, count;
     mmw_socket max_socket;
     fd_set read_fds, write_fds, except_fds;
@@ -1923,7 +1933,7 @@ mmw_server_update(struct mmw_server *srv)
 
     timeout.tv_sec = 0;
     timeout.tv_usec = 5;
-    err = select((mmw_int)(max_socket + 1), &read_fds, &write_fds, &except_fds, &timeout);
+    err = select((int)(max_socket + 1), &read_fds, &write_fds, &except_fds, &timeout);
     if (err < 0) {
         mmw_dbg(srv->config.log, "failed to select");
         return;
