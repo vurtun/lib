@@ -47,7 +47,7 @@ test directy for additional working examples.
 
 #### Why C?
 Personally I primarily use C instead of C++ and since I want to
-support both C and C++ and C++ is not useable from C I therefor focus
+support both C and C++ and C++ is not useable from C I therefore focus
 on C.
 
 #### Why C89?
@@ -57,6 +57,6 @@ and accessiblity for other languages.
 ##References
 - [Sean Barretts single header libraries](https://github.com/nothings/stb)
 - [Other single header libraries](https://github.com/nothings/stb/blob/master/docs/other_libs.md)
-- [enkiTS: source implemenation for mm_sched.h](https://github.com/dougbinks/enkiTS)
-- [Webby: source implemenation for mm_web.h](https://github.com/deplinenoise/webby)
+- [enkiTS: source implementation for mm_sched.h](https://github.com/dougbinks/enkiTS)
+- [Webby: source implementation for mm_web.h](https://github.com/deplinenoise/webby)
 
