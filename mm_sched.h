@@ -46,10 +46,6 @@ DEFINE:
         and validate them at compile time. If they are incorrect, you will
         get compile errors and will need to define them yourself.
 
-        You can define this to 'size_t' if you use the standard library,
-        otherwise it needs to be able to hold the maximum addressable memory
-        space. If you do not define this it will default to unsigned long.
-
     MMS_SPIN_COUNT_MAX
         You can change this to set the maximum number of spins for worker
         threads to stop looking for work and go into a sleeping state.

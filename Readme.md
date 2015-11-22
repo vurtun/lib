@@ -43,7 +43,7 @@ Each file has documentation, basic ussage description and
 examples at the top of the file. In addition each API function,
 struct and member variables are documented as well.
 Finally each library has a corresponding test file inside the
-test directy for additional working examples.
+test directory for additional working examples.
 
 #### Why C?
 Personally I primarily use C instead of C++ and since I want to
