@@ -812,9 +812,9 @@ xm3_mul(float *product, const float *a, const float *b)
 {
     #define A(row, col) a[(col*3)+row]
     #define B(row, col) b[(col*3)+row]
-    #define P(row, col) product[(col*2)+row]
+    #define P(row, col) product[(col*3)+row]
     int i;
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < 3; ++i) {
         const float ai0 = A(i,0), ai1 = A(i,1), ai2 = A(i,2);
         P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0);
         P(i,1) = ai0 * B(0,1) + ai1 * B(1,1) + ai2 * B(2,1);
@@ -828,7 +828,7 @@ xm3_mul(float *product, const float *a, const float *b)
 MMX_API void
 xm3_from_quat(float *m, const float *q)
 {
-    #define M(row, col) m[(col<<2)+row]
+    #define M(row, col) m[(col*3)+row]
     float qx = q[0], qy = q[1], qz = q[2], qw = q[3];
     M(0,0) = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
     M(0,1) = 2.0f * qx * qy + 2.0f * qw * qz;
