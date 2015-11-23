@@ -328,6 +328,7 @@ MMX_API void xm3_rotate_z(float *m, float angle);
 MMX_API void xm3_rotate_axis(float *m, int axis, float angle);
 MMX_API void xm3_rotate_align(float *m, const float *dest, const float *src);
 MMX_API void xm3_from_quat(float *m, const float *q);
+MMX_API void xm3_from_mat4(float *r, const float *m);
 
 MMX_API void xm4_identity(float *m);
 MMX_API void xm4_transpose(float *m);
@@ -339,6 +340,7 @@ MMX_API void xm4_persp(float *m, float fov, float aspect, float near, float far)
 MMX_API void xm4_lookat(float *m, const float *eye, const float *center, const float *up);
 MMX_API void xm4_from_quat(float *m, const float *q);
 MMX_API void xm4_from_quat_vec(float *m, const float *q, const float *p);
+MMX_API void xm4_from_mat3(float *r, const float *m);
 
 /* ---------------------------------------------------------------
  *                          QUATERNION
@@ -1041,6 +1043,30 @@ xm4_from_quat_vec(float *m, const float *q, const float *p)
     #undef M
 }
 
+MMX_API void
+xm4_from_mat3(float *r, const float *m)
+{
+    #define M(col, row) r[(col<<2)+row]
+    #define T(col, row) m[(col*3)+row]
+    M(0,0) = T(0,0); M(0,1) = T(0,1); M(0,2) = T(0,2); M(0,3) = 0;
+    M(1,0) = T(1,0); M(1,1) = T(1,1); M(1,2) = T(1,2); M(1,3) = 0;
+    M(2,0) = T(2,0); M(2,1) = T(2,1); M(2,2) = T(2,2); M(2,3) = 0;
+    M(3,0) = 0; M(3,1) = 0; M(3,2) = 0; M(3,3) = 1;
+    #undef M
+    #undef T
+}
+
+MMX_API void
+xm3_from_mat4(float *r, const float *m)
+{
+    #define T(col, row) m[(col<<2)+row]
+    #define M(col, row) r[(col*3)+row]
+    M(0,0) = T(0,0); M(0,1) = T(0,1); M(0,2) = T(0,2); M(0,3) = 0;
+    M(1,0) = T(1,0); M(1,1) = T(1,1); M(1,2) = T(1,2); M(1,3) = 0;
+    M(2,0) = T(2,0); M(2,1) = T(2,1); M(2,2) = T(2,2); M(2,3) = 0;
+    #undef M
+    #undef T
+}
 /* ---------------------------------------------------------------
  *                          Quaternion
  * ---------------------------------------------------------------*/
