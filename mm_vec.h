@@ -872,20 +872,38 @@ xm3_from_quat(float *m, const float *q)
 {
     #define M(col, row) m[(col*3)+row]
     float qx = q[0], qy = q[1], qz = q[2], qw = q[3];
-    M(0,0) = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
-    M(0,1) = 2.0f * qx * qy + 2.0f * qw * qz;
-    M(0,2) = 2.0f * qx * qz - 2.0f * qw * qy;
-    M(0,3) = 0.0f;
+    float wx, wy, wz;
+    float xx, yy, yz;
+    float xy, xz, zz;
+    float x2, y2, z2;
 
-    M(1,0) = 2.0f * qx * qy - 2.0f * qw * qz;
-    M(1,1) = 1.0f - 2.0f * qx * qx - 2.0f * qz *qz;
-    M(1,2) = 2.0f * qy * qz + 2.0f * qw * qx;
-    M(1,3) = 0.0f;
+    x2 = qx + qx;
+    y2 = qy + qy;
+    z2 = qz + qz;
 
-    M(2,0) = 2.0f * qx * qz + 2.0f * qw * qy;
-    M(2,1) = 2.0f * qy * qz - 2.0f * qw * qx;
-    M(2,2) = 1.0f - 2.0f * qx * qx - 2.0f * qy * qy;
-    M(2,3) = 0.0f;
+    xx = qx * x2;
+    xy = qx * y2;
+    xz = qx * z2;
+
+    yy = qy * y2;
+    yz = qy * z2;
+    zz = qz * z2;
+
+    wx = qw * x2;
+    wy = qw * y2;
+    wz = qw * z2;
+
+    M(0,0) = 1.0f - (yy + zz);
+    M(0,1) = xy - wz;
+    M(0,2) = xz + wy;
+
+    M(1,0) = xy + wz;
+    M(1,1) = 1.0f - (xx + zz);
+    M(1,2) = yz - wx;
+
+    M(2,0) = xz - wy;
+    M(2,1) = yz + wx;
+    M(2,2) = 1.0f - (xx + yy);
     #undef M
 }
 
