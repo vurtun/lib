@@ -6,13 +6,13 @@ My single header libraries for C/C++.
 |library | lastest version | category | LoC | license | description
 | --------------------- | ---- | -------- | --- | --- | --------------------------------
 |**mm_json.h** | 1.00 | parser | 850 | zlib | JSON-Parser
-|**mm_lexer.h** | 1.00 | parser | 1165 | zlib | simple lexer for C-like languages
-|**mm_sched.h** | 1.00 | multithreading | 680 | zlib | multithreaded task scheduler
-|**mm_vec.h** | 1.00 | math | 1503 | zlib | vector math
-|**mm_web.h** | 1.00 | network | 1466 | BSD |  lightweight webserver
+|**mm_lexer.h** | 1.00 | parser | 1159 | zlib | simple lexer for C-like languages
+|**mm_sched.h** | 1.00 | multithreading | 696 | zlib | multithreaded task scheduler
+|**mm_vec.h** | 1.00 | math | 1543 | zlib | vector math
+|**mm_web.h** | 1.00 | network | 1456 | BSD |  lightweight webserver
 
 Total libraries: 5  
-Total lines of C code: 5664
+Total lines of C code: 5704
 
 ##FAQ
 ---
