@@ -28,6 +28,12 @@
     xv_test_assert(v.y == b);\
     xv_test_assert(v.z == c);}
 
+#define xv_test_vec4(v, a, b, c, d)\
+    {xv_test_assert(v.x == a);\
+    xv_test_assert(v.y == b);\
+    xv_test_assert(v.z == c);\
+    xv_test_assert(v.w == d);}
+
 #define xv_test_result()\
     do { \
         printf("======================================================\n"); \
@@ -37,6 +43,7 @@
     } while (0)
 
 struct xvec3 {float x,y,z;};
+struct xvec4 {float x,y,z,w;};
 struct xmat3 {float m[3][3];};
 struct xmat4 {float m[4][4];};
 
@@ -47,6 +54,17 @@ XV3(float x, float y, float z)
     v.x = x;
     v.y = y;
     v.z = z;
+    return v;
+}
+
+static struct xvec4
+XV4(float x, float y, float z, float w)
+{
+    struct xvec4 v;
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    v.w = w;
     return v;
 }
 
@@ -394,6 +412,24 @@ test_matrix3(void)
         xv_test_vec3(rv, 44.0f, 46.0f, 70.0f);
     }
 
+    xv_test_section("xm3_transpose")
+    {
+        a.m[0][0] = 1; a.m[0][1] = 2; a.m[0][2] = 3;
+        a.m[1][0] = 3; a.m[1][1] = 2; a.m[1][2] = 1;
+        a.m[2][0] = 2; a.m[2][1] = 1; a.m[2][2] = 3;
+        xm3_transpose(xm(a));
+
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 3.0f);
+        xv_test_assert(a.m[0][2] == 2.0f);
+        xv_test_assert(a.m[1][0] == 2.0f);
+        xv_test_assert(a.m[1][1] == 2.0f);
+        xv_test_assert(a.m[1][2] == 1.0f);
+        xv_test_assert(a.m[2][0] == 3.0f);
+        xv_test_assert(a.m[2][1] == 1.0f);
+        xv_test_assert(a.m[2][2] == 3.0f);
+    }
+
     xv_test_section("xm3_from_quat_identity")
     {
         const float quat[4] = {0,0,0,1};
@@ -408,6 +444,7 @@ test_matrix3(void)
         xv_test_assert(r.m[2][1] == 0.0f);
         xv_test_assert(r.m[2][2] == 1.0f);
     }
+
     xv_test_result();
     return fail_count;
 }
@@ -438,8 +475,8 @@ test_matrix4(void)
         xv_test_assert(a.m[3][1] == 0.0f);
         xv_test_assert(a.m[3][2] == 0.0f);
         xv_test_assert(a.m[3][3] == 1.0f);
-
     }
+
     xv_test_section("xm4_mul identity * identity")
     {
         xm4_identity(xm(a));
@@ -495,6 +532,92 @@ test_matrix4(void)
         xv_test_assert(r.m[3][2] == 152.0f);
         xv_test_assert(r.m[3][3] == 54.0f);
     }
+
+    xv_test_section("xm4_transpose")
+    {
+        a.m[0][0] = 1; a.m[0][1] = 2; a.m[0][2] = 3; a.m[0][3] = 4;
+        a.m[1][0] = 4; a.m[1][1] = 3; a.m[1][2] = 2; a.m[1][3] = 1;
+        a.m[2][0] = 3; a.m[2][1] = 4; a.m[2][2] = 1; a.m[2][3] = 2;
+        a.m[3][0] = 2; a.m[3][1] = 1; a.m[3][2] = 4; a.m[3][3] = 3;
+        xm4_transpose(xm(a));
+
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 4.0f);
+        xv_test_assert(a.m[0][2] == 3.0f);
+        xv_test_assert(a.m[0][3] == 2.0f);
+        xv_test_assert(a.m[1][0] == 2.0f);
+        xv_test_assert(a.m[1][1] == 3.0f);
+        xv_test_assert(a.m[1][2] == 4.0f);
+        xv_test_assert(a.m[1][3] == 1.0f);
+        xv_test_assert(a.m[2][0] == 3.0f);
+        xv_test_assert(a.m[2][1] == 2.0f);
+        xv_test_assert(a.m[2][2] == 1.0f);
+        xv_test_assert(a.m[2][3] == 4.0f);
+        xv_test_assert(a.m[3][0] == 4.0f);
+        xv_test_assert(a.m[3][1] == 1.0f);
+        xv_test_assert(a.m[3][2] == 2.0f);
+        xv_test_assert(a.m[3][3] == 3.0f);
+    }
+
+    xv_test_section("xm4_translate")
+    {
+        xm4_translate(xm(r), 3.0f, 2.0f, 4.0f);
+
+        xv_test_assert(r.m[0][0] == 1.0f);
+        xv_test_assert(r.m[0][1] == 0.0f);
+        xv_test_assert(r.m[0][2] == 0.0f);
+        xv_test_assert(r.m[0][3] == 0.0f);
+        xv_test_assert(r.m[1][0] == 0.0f);
+        xv_test_assert(r.m[1][1] == 1.0f);
+        xv_test_assert(r.m[1][2] == 0.0f);
+        xv_test_assert(r.m[1][3] == 0.0f);
+        xv_test_assert(r.m[2][0] == 0.0f);
+        xv_test_assert(r.m[2][1] == 0.0f);
+        xv_test_assert(r.m[2][2] == 1.0f);
+        xv_test_assert(r.m[2][3] == 0.0f);
+        xv_test_assert(r.m[3][0] == 3.0f);
+        xv_test_assert(r.m[3][1] == 2.0f);
+        xv_test_assert(r.m[3][2] == 4.0f);
+        xv_test_assert(r.m[3][3] == 1.0f);
+    }
+
+    xv_test_section("xm4_transform")
+    {
+        struct xvec4 rv, v;
+        v = XV4(2.0f, 4.0f, 6.0f, 1.0f);
+
+        a.m[0][0] = 1; a.m[0][1] = 3; a.m[0][2] = 5; a.m[0][3] = 2;
+        a.m[1][0] = 4; a.m[1][1] = 5; a.m[1][2] = 3; a.m[1][3] = 4;
+        a.m[2][0] = 2; a.m[2][1] = 9; a.m[2][2] = 5; a.m[2][3] = 3;
+        a.m[3][0] = 6; a.m[3][1] = 3; a.m[3][2] = 2; a.m[3][3] = 1;
+        xm4_transform(xv(rv), xm(a), xv(v));
+        xv_test_vec4(rv, 46.0f, 50.0f, 73.0f, 37.0f);
+    }
+
+    xv_test_result();
+    return fail_count;
+}
+
+static int
+test_quat(void)
+{
+    int pass_count = 0;
+    int fail_count = 0;
+
+    xv_test_section("xq_rotation && xq_get_rotation");
+    {
+        float q[4];
+        struct xvec3 axis = XV3(0,1,0);
+        float angle = 45.0f;
+        xq_rotation(q, 45.0f, axis.x, axis.y, axis.z);
+        angle = xq_get_rotation(&axis.x, q);
+        angle = MMX_RAD2DEG(angle);
+        xv_test_assert(axis.x == 0.0f);
+        xv_test_assert(axis.y > 0.9999999f && axis.y < 1.0f);
+        xv_test_assert(axis.z == 0);
+        xv_test_assert(angle > 45.0f && angle < 45.00001);
+    }
+
     xv_test_result();
     return fail_count;
 }
@@ -505,6 +628,7 @@ main(void)
     test_vector();
     test_matrix3();
     test_matrix4();
+    test_quat();
     return 0;
 }
 
