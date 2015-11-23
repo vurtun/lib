@@ -410,7 +410,7 @@ MMX_API int xb_intersects_box(const float *a, const float *b);
  *                      IMPLEMENTATION
  *
  * ===============================================================*/
-#ifdef MMX_DEFINE
+#ifdef MMX_IMPLEMENTATION
 
 #define MMX_INTERN static
 #define MMX_GLOBAL static
