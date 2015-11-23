@@ -890,6 +890,18 @@ xm3_from_quat(float *m, const float *q)
 }
 
 MMX_API void
+xm3_from_mat4(float *r, const float *m)
+{
+    #define T(col, row) m[(col<<2)+row]
+    #define M(col, row) r[(col*3)+row]
+    M(0,0) = T(0,0); M(0,1) = T(0,1); M(0,2) = T(0,2); M(0,3) = 0;
+    M(1,0) = T(1,0); M(1,1) = T(1,1); M(1,2) = T(1,2); M(1,3) = 0;
+    M(2,0) = T(2,0); M(2,1) = T(2,1); M(2,2) = T(2,2); M(2,3) = 0;
+    #undef M
+    #undef T
+}
+
+MMX_API void
 xm4_identity(float *m)
 {
     #define M(col, row) m[(col<<2)+row]
@@ -1056,17 +1068,6 @@ xm4_from_mat3(float *r, const float *m)
     #undef T
 }
 
-MMX_API void
-xm3_from_mat4(float *r, const float *m)
-{
-    #define T(col, row) m[(col<<2)+row]
-    #define M(col, row) r[(col*3)+row]
-    M(0,0) = T(0,0); M(0,1) = T(0,1); M(0,2) = T(0,2); M(0,3) = 0;
-    M(1,0) = T(1,0); M(1,1) = T(1,1); M(1,2) = T(1,2); M(1,3) = 0;
-    M(2,0) = T(2,0); M(2,1) = T(2,1); M(2,2) = T(2,2); M(2,3) = 0;
-    #undef M
-    #undef T
-}
 /* ---------------------------------------------------------------
  *                          Quaternion
  * ---------------------------------------------------------------*/
