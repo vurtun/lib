@@ -326,7 +326,7 @@ MMX_API void xm3_rotate_x(float *m, float angle);
 MMX_API void xm3_rotate_y(float *m, float angle);
 MMX_API void xm3_rotate_z(float *m, float angle);
 MMX_API void xm3_rotate_axis(float *m, int axis, float angle);
-MMX_API void xm3_rotate_align(float *m, const float *d, const float *z);
+MMX_API void xm3_rotate_align(float *m, const float *dest, const float *src);
 MMX_API void xm3_from_quat(float *m, const float *q);
 
 MMX_API void xm4_identity(float *m);
@@ -835,7 +835,6 @@ xm3_transform(float *r, const float *m, const float *v)
     #define X(a) a[0]
     #define Y(a) a[1]
     #define Z(a) a[2]
-    #define W(a) a[3]
     #define M(col, row) m[(col*3)+row]
     X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v);
     Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v);

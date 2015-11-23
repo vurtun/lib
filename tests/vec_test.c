@@ -371,6 +371,43 @@ test_matrix3(void)
         xv_test_assert(r.m[2][1] == 33.0f);
         xv_test_assert(r.m[2][2] == 31.0f);
     }
+
+    xv_test_section("xm3_transform_identity")
+    {
+        struct xvec3 rv, v;
+        v = XV3(5.0f, 2.0f, 3.0f);
+        xm3_identity(xm(a));
+        xm3_transform(xv(rv), xm(a), xv(v));
+        xv_test_vec3(v, 5.0f, 2.0f, 3.0f);
+    }
+
+    xv_test_section("xm3_transform")
+    {
+        struct xvec3 rv, v;
+        v = XV3(2.0f, 4.0f, 6.0f);
+
+        a.m[0][0] = 1; a.m[0][1] = 3; a.m[0][2] = 5;
+        a.m[1][0] = 4; a.m[1][1] = 5; a.m[1][2] = 3;
+        a.m[2][0] = 2; a.m[2][1] = 9; a.m[2][2] = 5;
+
+        xm3_transform(xv(rv), xm(a), xv(v));
+        xv_test_vec3(rv, 44.0f, 46.0f, 70.0f);
+    }
+
+    xv_test_section("xm3_from_quat_identity")
+    {
+        const float quat[4] = {0,0,0,1};
+        xm3_from_quat(xm(r), quat);
+        xv_test_assert(r.m[0][0] == 1.0f);
+        xv_test_assert(r.m[0][1] == 0.0f);
+        xv_test_assert(r.m[0][2] == 0.0f);
+        xv_test_assert(r.m[1][0] == 0.0f);
+        xv_test_assert(r.m[1][1] == 1.0f);
+        xv_test_assert(r.m[1][2] == 0.0f);
+        xv_test_assert(r.m[2][0] == 0.0f);
+        xv_test_assert(r.m[2][1] == 0.0f);
+        xv_test_assert(r.m[2][2] == 1.0f);
+    }
     xv_test_result();
     return fail_count;
 }
