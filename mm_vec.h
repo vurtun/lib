@@ -695,7 +695,7 @@ xv3_project_along_plane(float *r, const float *v, const float *normal,
 MMX_API void
 xm3_identity(float *m)
 {
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     M(0,0) = 1.0f; M(0,1) = 0.0f; M(0,2) = 0.0f;
     M(1,0) = 0.0f; M(1,1) = 1.0f; M(1,2) = 0.0f;
     M(2,0) = 0.0f; M(2,1) = 0.0f; M(2,2) = 1.0f;
@@ -706,7 +706,7 @@ MMX_API void
 xm3_transpose(float *m)
 {
     int i, j;
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     for (j = 0; j < 3; ++j) {
         for (i = j+1; i < 3; ++i) {
             float t = M(i,j);
@@ -722,7 +722,7 @@ xm3_rotate_x(float *m, float angle)
 {
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     M(0,0) = 1; M(0,1) = 0; M(0,2) = 0;
     M(1,0) = 0; M(1,1) = c; M(1,2) =-s;
     M(2,0) = 0; M(2,1) = s; M(2,2) = c;
@@ -734,7 +734,7 @@ xm3_rotate_y(float *m, float angle)
 {
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     M(0,0) = c; M(0,1) = 0; M(0,2) = s;
     M(1,0) = 0; M(1,1) = 1; M(1,2) = 0;
     M(2,0) =-s; M(2,1) = 0; M(2,2) = c;
@@ -746,7 +746,7 @@ xm3_rotate_z(float *m, float angle)
 {
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     M(0,0) = c; M(0,1) =-s; M(0,2) = 0;
     M(1,0) = s; M(1,1) = c; M(1,2) = 0;
     M(2,0) = 0; M(2,1) = 0; M(2,2) = 1;
@@ -768,7 +768,7 @@ MMX_API void
 xm3_rotate(float *m, float angle, float X, float Y, float Z)
 {
     float tmp1, tmp2;
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     float c = (float)MMX_DEG2RAD(angle);
     float s = (float)MMX_DEG2RAD(angle);
     float t = 1.0f - c;
@@ -801,7 +801,7 @@ xm3_rotate_align(float *m, const float *d, const float *z)
     #define X v[0]
     #define Y v[1]
     #define Z v[2]
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
 
     float v[3], c, k;
     xv_cross(v, z, d, 3);
@@ -821,7 +821,7 @@ xm3_rotate_align(float *m, const float *d, const float *z)
 MMX_API void
 xm3_scale(float *m, float x, float y, float z)
 {
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     xv_zero_array(m, 9);
     M(0,0) = x;
     M(1,1) = y;
@@ -836,7 +836,7 @@ xm3_transform(float *r, const float *m, const float *v)
     #define Y(a) a[1]
     #define Z(a) a[2]
     #define W(a) a[3]
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v);
     Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v);
     Z(r) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v);
@@ -850,15 +850,16 @@ xm3_transform(float *r, const float *m, const float *v)
 MMX_API void
 xm3_mul(float *product, const float *a, const float *b)
 {
-    #define A(row, col) a[(col*3)+row]
-    #define B(row, col) b[(col*3)+row]
-    #define P(row, col) product[(col*3)+row]
+    #define A(col, row) a[(col*3)+row]
+    #define B(col, row) b[(col*3)+row]
+    #define P(col, row) product[(col*3)+row]
     int i;
     for (i = 0; i < 3; ++i) {
         const float ai0 = A(i,0), ai1 = A(i,1), ai2 = A(i,2);
         P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0);
         P(i,1) = ai0 * B(0,1) + ai1 * B(1,1) + ai2 * B(2,1);
         P(i,2) = ai0 * B(0,2) + ai1 * B(1,2) + ai2 * B(2,2);
+        P(i,3) = ai0 * B(0,3) + ai1 * B(1,3) + ai2 * B(2,3);
     }
     #undef A
     #undef B
@@ -868,7 +869,7 @@ xm3_mul(float *product, const float *a, const float *b)
 MMX_API void
 xm3_from_quat(float *m, const float *q)
 {
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     float qx = q[0], qy = q[1], qz = q[2], qw = q[3];
     M(0,0) = 1.0f - 2.0f * qy * qy - 2.0f * qz * qz;
     M(0,1) = 2.0f * qx * qy + 2.0f * qw * qz;
@@ -890,7 +891,7 @@ xm3_from_quat(float *m, const float *q)
 MMX_API void
 xm4_identity(float *m)
 {
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     M(0,0) = 1; M(0,1) = 0; M(0,2) = 0; M(0,3) = 0;
     M(1,0) = 0; M(1,1) = 1; M(1,2) = 0; M(1,3) = 0;
     M(2,0) = 0; M(2,1) = 0; M(2,2) = 1; M(2,3) = 0;
@@ -902,7 +903,7 @@ MMX_API void
 xm4_transpose(float *m)
 {
     int i, j;
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     for (j = 0; j < 4; ++j) {
         for (i = j+1; i < 4; ++i) {
             float t = M(i,j);
@@ -916,9 +917,9 @@ xm4_transpose(float *m)
 MMX_API void
 xm4_mul(float *product, const float *a, const float *b)
 {
-    #define A(row, col) a[(col << 2)+row]
-    #define B(row, col) b[(col << 2)+row]
-    #define P(row, col) product[(col << 2)+row]
+    #define A(col, row) a[(col << 2)+row]
+    #define B(col, row) b[(col << 2)+row]
+    #define P(col, row) product[(col << 2)+row]
     int i;
     for (i = 0; i < 4; ++i) {
         const float ai0 = A(i,0), ai1 = A(i,1), ai2 = A(i,2), ai3 = A(i,3);
@@ -935,7 +936,7 @@ xm4_mul(float *product, const float *a, const float *b)
 MMX_API void
 xm4_translate(float *m, float x, float y, float z)
 {
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     xv_zero_array(m, 16);
     M(0,0) = 1.0f;
     M(1,1) = 1.0f;
@@ -950,7 +951,7 @@ xm4_translate(float *m, float x, float y, float z)
 MMX_API void
 xm4_ortho(float *m, float left, float right, float bottom, float top)
 {
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     xv_zero_array(m, 16);
     M(0,0) = 2.0f/(right-left);
     M(1,1) = 2.0f/(top-bottom);
@@ -964,7 +965,7 @@ xm4_ortho(float *m, float left, float right, float bottom, float top)
 MMX_API void
 xm4_persp(float *m, float fov, float aspect, float near, float far)
 {
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     const float rad = MMX_DEG2RAD(fov);
     const float hfov = (float)MMX_TAN(rad/2.0f);
     xv_zero_array(m, 16);
@@ -984,7 +985,7 @@ xm4_lookat(float *m, const float *eye, const float *center, const float *up)
     xv_cross(s, f, up, 3); xv_normeq(s,3);
     xv_cross(u, s, f, 3);
 
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     xv_zero_array(m, 16);
     M(0,0) = s[0],  M(1,0) = s[1],  M(2,0) = s[2];
     M(0,1) = u[0],  M(1,1) = u[1],  M(2,1) = u[2];
@@ -1003,7 +1004,7 @@ xm4_transform(float *r, const float *m, const float *v)
     #define Y(a) a[1]
     #define Z(a) a[2]
     #define W(a) a[3]
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v) + M(0,3)*W(v);
     Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v) + M(1,3)*W(v);
     Z(r) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v) + M(2,3)*W(v);
@@ -1020,8 +1021,8 @@ xm4_from_quat(float *m, const float *q)
 {
     float t[3*3];
     xm3_from_quat(t, q);
-    #define M(row, col) m[(col<<2)+row]
-    #define T(row, col) t[(col*3)+row]
+    #define M(col, row) m[(col<<2)+row]
+    #define T(col, row) t[(col*3)+row]
     M(0,0) = T(0,0); M(0,1) = T(0,1); M(0,2) = T(0,2); M(0,3) = 0;
     M(1,0) = T(1,0); M(1,1) = T(1,1); M(1,2) = T(1,2); M(1,3) = 0;
     M(2,0) = T(2,0); M(2,1) = T(2,1); M(2,2) = T(2,2); M(2,3) = 0;
@@ -1033,7 +1034,7 @@ xm4_from_quat(float *m, const float *q)
 MMX_API void
 xm4_from_quat_vec(float *m, const float *q, const float *p)
 {
-    #define M(row, col) m[(col<<2)+row]
+    #define M(col, row) m[(col<<2)+row]
     xm4_from_quat(m, q);
     M(3,0) = p[0]; M(3,1) = p[1]; M(3,2) = p[2]; M(3,3) = 1;
     #undef M
@@ -1168,7 +1169,7 @@ xq_integrate3D(float *r, const float *q, float *omega, float delta)
 MMX_API void
 xq_from_mat3(float *q, const float *m)
 {
-    #define M(row, col) m[(col*3)+row]
+    #define M(col, row) m[(col*3)+row]
     float tr, s;
     tr = M(0,0) + M(1,1) + M(2,2);
     if (tr > 0.00001){
@@ -1678,7 +1679,7 @@ xb_translate_self(float *r, const float *t)
 MMX_API void
 xb_transform(float *r, const float *box, const float *origin, const float *axis)
 {
-    #define M(row, col) axis[(col*3)+row]
+    #define M(col, row) axis[(col*3)+row]
     int i;
     float t[3];
     float center[3];
