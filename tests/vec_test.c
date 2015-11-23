@@ -429,34 +429,34 @@ test_matrix4(void)
 
     xv_test_section("xm4_mul matrix * matrix ")
     {
-        a.m[0][0] = 1; a.m[0][1] = 2; a.m[0][2] = 3; a.m[0][3] = 4;
-        a.m[1][0] = 4; a.m[1][1] = 3; a.m[1][2] = 2; a.m[1][3] = 1;
-        a.m[2][0] = 3; a.m[2][1] = 4; a.m[2][2] = 1; a.m[2][3] = 2;
-        a.m[3][0] = 2; a.m[3][1] = 1; a.m[3][2] = 4; a.m[3][3] = 3;
+        a.m[0][0] = 1; a.m[0][1] = 3; a.m[0][2] = 5; a.m[0][3] = 7;
+        a.m[1][0] = 4; a.m[1][1] = 5; a.m[1][2] = 3; a.m[1][3] = 9;
+        a.m[2][0] = 2; a.m[2][1] = 9; a.m[2][2] = 5; a.m[2][3] = 6;
+        a.m[3][0] = 7; a.m[3][1] = 3; a.m[3][2] = 2; a.m[3][3] = 9;
 
-        b.m[0][0] = 5; b.m[0][1] = 6; b.m[0][2] = 7; b.m[0][3] = 8;
-        b.m[1][0] = 8; b.m[1][1] = 7; b.m[1][2] = 6; b.m[1][3] = 5;
-        b.m[2][0] = 7; b.m[2][1] = 8; b.m[2][2] = 5; b.m[2][3] = 6;
-        b.m[3][0] = 6; b.m[3][1] = 5; b.m[3][2] = 8; b.m[3][3] = 7;
+        b.m[0][0] = 2; b.m[0][1] = 4; b.m[0][2] = 6; b.m[0][3] = 1;
+        b.m[1][0] = 1; b.m[1][1] = 5; b.m[1][2] = 7; b.m[1][3] = 9;
+        b.m[2][0] = 6; b.m[2][1] = 8; b.m[2][2] = 4; b.m[2][3] = 1;
+        b.m[3][0] = 3; b.m[3][1] = 8; b.m[3][2] = 9; b.m[3][3] = 2;
 
         xm4_mul(xm(r), xm(a), xm(b));
 
-        xv_test_assert(r.m[0][0] == 66.0f);
-        xv_test_assert(r.m[0][1] == 64.0f);
-        xv_test_assert(r.m[0][2] == 66.0f);
-        xv_test_assert(r.m[0][3] == 64.0f);
-        xv_test_assert(r.m[1][0] == 64.0f);
-        xv_test_assert(r.m[1][1] == 66.0f);
-        xv_test_assert(r.m[1][2] == 64.0f);
-        xv_test_assert(r.m[1][3] == 66.0f);
-        xv_test_assert(r.m[2][0] == 66.0f);
-        xv_test_assert(r.m[2][1] == 64.0f);
-        xv_test_assert(r.m[2][2] == 66.0f);
-        xv_test_assert(r.m[2][3] == 64.0f);
-        xv_test_assert(r.m[3][0] == 64.0f);
-        xv_test_assert(r.m[3][1] == 66.0f);
-        xv_test_assert(r.m[3][2] == 64.0f);
-        xv_test_assert(r.m[3][3] == 66.0f);
+        xv_test_assert(r.m[0][0] == 56.0f);
+        xv_test_assert(r.m[0][1] == 115.0f);
+        xv_test_assert(r.m[0][2] == 110.0f);
+        xv_test_assert(r.m[0][3] == 47.0f);
+        xv_test_assert(r.m[1][0] == 58.0f);
+        xv_test_assert(r.m[1][1] == 137.0f);
+        xv_test_assert(r.m[1][2] == 152.0f);
+        xv_test_assert(r.m[1][3] == 70.0f);
+        xv_test_assert(r.m[2][0] == 61.0f);
+        xv_test_assert(r.m[2][1] == 141.0f);
+        xv_test_assert(r.m[2][2] == 149.0f);
+        xv_test_assert(r.m[2][3] == 100.0f);
+        xv_test_assert(r.m[3][0] == 56.0f);
+        xv_test_assert(r.m[3][1] == 131.0f);
+        xv_test_assert(r.m[3][2] == 152.0f);
+        xv_test_assert(r.m[3][3] == 54.0f);
     }
     xv_test_result();
     return fail_count;
