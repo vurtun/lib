@@ -28,6 +28,14 @@ DEFINES:
         file and all internal symbols and functions will only be visible inside
         that file.
 
+    MMX_INT32
+    MMX_UINT32
+    MMX_UINT_PTR
+        If your compiler is C99 you do not need to define this.
+        Otherwise, mm_sched will try default assignments for them
+        and validate them at compile time. If they are incorrect, you will
+        get compile errors and will need to define them yourself.
+
     MMX_SIN
     MMX_FABS
     MMX_COS
@@ -67,15 +75,15 @@ USAGE:
     before including it.
 
     Header-File mode:
-    If you do not define MMS_IMPLEMENTATION before including this file, it
+    If you do not define MMX_IMPLEMENTATION before including this file, it
     will operate in header only mode. In this mode it declares all used structs
     and the API of the library without including the implementation of the library.
 
     Implementation mode:
-    If you define MMS_IMPLEMENTATIOn before including this file, it will
+    If you define MMX_IMPLEMENTATIOn before including this file, it will
     compile the implementation of the JSON parser. To specify the visibility
     as private and limit all symbols inside the implementation file
-    you can define MMS_STATIC before including this file.
+    you can define MMX_STATIC before including this file.
     Make sure that you only include this file implementation in *one* C or C++ file
     to prevent collisions.
 */
@@ -100,6 +108,35 @@ extern "C" {
 #ifndef MMX_SQRT
 #define MMX_SQRT sqrt
 #endif
+
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
+#include <stdint.h>
+#ifndef MMX_UINT32
+#define MMX_UINT32 uint32_t
+#endif
+#ifndef MMX_INT32
+#define MMX_INT32 int32_t
+#endif
+#ifndef MMX_UINT_PTR
+#define MMX_UINT_PTR uintptr_t
+#endif
+#else
+#ifndef MMX_UINT32
+#define MMX_UINT32 unsigned int
+#endif
+#ifndef MMX_INT32
+#define MMX_INT32 int
+#endif
+#ifndef MMX_UINT_PTR
+#define MMX_UINT_PTR unsigned long
+#endif
+#endif
+
+typedef unsigned char mmx_byte;
+typedef MMX_UINT32 mmx_uint;
+typedef MMX_INT32 mmx_int;
+typedef MMX_UINT_PTR mmx_size;
+typedef MMX_UINT_PTR mmx_ptr;
 
 /* ---------------------------------------------------------------
  *                          VECTOR
@@ -418,8 +455,11 @@ MMX_API int xb_intersects_box(const float *a, const float *b);
 
 #define MMX_MIN(a,b) (((a)<(b))?(a):(b))
 #define MMX_MAX(a,b) (((a)>(b))?(a):(b))
-#define MMX_DEG2RAD(a) ((a)*(XV_PI/180.0f))
-#define MMX_RAD2DEG(a) ((a)*(180.0f/XV_PI))
+#define MMX_DEG2RAD(a) ((a)*(MMX_PI/180.0f))
+#define MMX_RAD2DEG(a) ((a)*(180.0f/MMX_PI))
+
+/* make sure atomic and pointer types have correct size */
+typedef int mmx__check_uint32_size[(sizeof(mmx_uint) == 4) ? 1 : -1];
 
 #ifdef __cplusplus
 /* C++ hates the C align makro so have to resort to templates */
@@ -450,12 +490,12 @@ template<typename T> struct xv_alignof{struct Big {T x; char c;}; enum {
 
 #define MMX_MIN(a,b) (((a)<(b))?(a):(b))
 #define MMX_MAX(a,b) (((a)>(b))?(a):(b))
-#define MMX_CLAMP(a,v, b) XV_MIN(b, XV_MAX(a,v))
+#define MMX_CLAMP(a,v, b) MMX_MIN(b, MMX_MAX(a,v))
 #define MMX_PTR_SUB(t, p, i) ((t*)((void*)((mmx_byte*)(p) - (i))))
 #define MMX_ALIGN_PTR(x, mask)\
-    (MMX_UINT_TO_PTR((XV_PTR_TO_UINT((mmx_byte*)(x) + (mask-1)) & XV_PTR_TO_UINT(~(mask-1)))))
+    (MMX_UINT_TO_PTR((MMX_PTR_TO_UINT((mmx_byte*)(x) + (mask-1)) & MMX_PTR_TO_UINT(~(mask-1)))))
 #define MMX_ALIGN_PTR_BACK(x, mask)\
-    (MMX_UINT_TO_PTR((XV_PTR_TO_UINT((mmx_byte*)(x)) & ~(mask-1))))
+    (MMX_UINT_TO_PTR((MMX_PTR_TO_UINT((mmx_byte*)(x)) & ~(mask-1))))
 
 
 #ifndef MMX_SIN
@@ -570,7 +610,7 @@ xv3_angle(float *axis, const float *a, const float *b)
     xv_cross(axis, a, b, 3);
     xv_normeq(axis, 3);
     d = xv_dot(a, b, 3);
-    return (float)MMX_ACOS(XV_CLAMP(-1.0f, d, 1.0f));
+    return (float)MMX_ACOS(MMX_CLAMP(-1.0f, d, 1.0f));
 }
 
 MMX_API void
@@ -680,8 +720,8 @@ xm3_transpose(float *m)
 MMX_API void
 xm3_rotate_x(float *m, float angle)
 {
-    float s = (float)MMX_SIN(XV_DEG2RAD(angle));
-    float c = (float)MMX_COS(XV_DEG2RAD(angle));
+    float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
+    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
     #define M(row, col) m[(col*3)+row]
     M(0,0) = 1; M(0,1) = 0; M(0,2) = 0;
     M(1,0) = 0; M(1,1) = c; M(1,2) =-s;
@@ -692,8 +732,8 @@ xm3_rotate_x(float *m, float angle)
 MMX_API void
 xm3_rotate_y(float *m, float angle)
 {
-    float s = (float)MMX_SIN(XV_DEG2RAD(angle));
-    float c = (float)MMX_COS(XV_DEG2RAD(angle));
+    float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
+    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
     #define M(row, col) m[(col*3)+row]
     M(0,0) = c; M(0,1) = 0; M(0,2) = s;
     M(1,0) = 0; M(1,1) = 1; M(1,2) = 0;
@@ -704,8 +744,8 @@ xm3_rotate_y(float *m, float angle)
 MMX_API void
 xm3_rotate_z(float *m, float angle)
 {
-    float s = (float)MMX_SIN(XV_DEG2RAD(angle));
-    float c = (float)MMX_COS(XV_DEG2RAD(angle));
+    float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
+    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
     #define M(row, col) m[(col*3)+row]
     M(0,0) = c; M(0,1) =-s; M(0,2) = 0;
     M(1,0) = s; M(1,1) = c; M(1,2) = 0;
@@ -1174,7 +1214,7 @@ xp_from_points(float *p, const float *p1, const float *p2, const float *p3)
     xv_sub(t0, p1, p2, 3);
     xv_sub(t1, p3, p2, 3);
     xv_cross(p, t0, t1, 3);
-    if (xp_normeq(p) == 0.0f)
+    if (xp_norm_self(p) == 0.0f)
         return 0;
     p[3] = -xv_dot(p, p2, 3);
     return 1;
@@ -1185,7 +1225,7 @@ xp_from_vec(float *r, const float *dir1, const float *dir2, const float *p)
 {
     float t0[3];
     xv_cross(r, dir1, dir2, 3);
-    if (xp_normeq(r) == 0.0f)
+    if (xp_norm_self(r) == 0.0f)
         return 0;
     r[3] = -xv_dot(r, p, 3);
     return 1;
@@ -1649,9 +1689,9 @@ xb_transform(float *r, const float *box, const float *origin, const float *axis)
     xv_mulieq(center, 0.5f, 3);
     xv_sub(extents, &box[3], center, 3);
 
-    rotExtents[0] = (float)(MMX_FABS(extents[0] * M(0,0)) + XV_FABS(extents[1] * M(1,0)) + XV_FABS(extents[2] * M(2,0)));
-    rotExtents[1] = (float)(MMX_FABS(extents[0] * M(0,1)) + XV_FABS(extents[1] * M(1,1)) + XV_FABS(extents[2] * M(2,1)));
-    rotExtents[2] = (float)(MMX_FABS(extents[0] * M(0,2)) + XV_FABS(extents[1] * M(1,2)) + XV_FABS(extents[2] * M(2,2)));
+    rotExtents[0] = (float)(MMX_FABS(extents[0] * M(0,0)) + MMX_FABS(extents[1] * M(1,0)) + MMX_FABS(extents[2] * M(2,0)));
+    rotExtents[1] = (float)(MMX_FABS(extents[0] * M(0,1)) + MMX_FABS(extents[1] * M(1,1)) + MMX_FABS(extents[2] * M(2,1)));
+    rotExtents[2] = (float)(MMX_FABS(extents[0] * M(0,2)) + MMX_FABS(extents[1] * M(1,2)) + MMX_FABS(extents[2] * M(2,2)));
 
     xm3_transform(t, axis, center);
     xv_add(center, origin, t, 3);
@@ -1797,7 +1837,7 @@ xb_intersects_ray(float *scale, const float *b, const float *start, const float 
 
         if (dir[i] == 0.0f) continue;
         f = (start[i] - b[side*3+i]);
-        if (ax0 < 0 || MMX_FABS(f) > XV_FABS(*scale * dir[i])) {
+        if (ax0 < 0 || MMX_FABS(f) > MMX_FABS(*scale * dir[i])) {
             *scale = - (f/dir[i]);
             ax0 = i;
         }

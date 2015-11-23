@@ -1,8 +1,7 @@
-#define XV_STATIC
-#define XV_DEFINE
+#define MMX_STATIC
+#define MMX_IMPLEMENTATION
 #include <math.h>
 #include "../mm_vec.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +37,8 @@
     } while (0)
 
 struct xvec3 {float x,y,z;};
+struct xmat3 {float m[3][3];};
+
 static struct xvec3
 XV3(float x, float y, float z)
 {
@@ -281,10 +282,43 @@ static int test_vector(void)
     return fail_count;
 }
 
+static int
+test_matrix3(void)
+{
+    int pass_count = 0;
+    int fail_count = 0;
+
+
+    struct xmat3 a, b, r;
+    xv_test_section("xm3_identity")
+    {
+        xm3_identity(xm(a));
+    }
+
+#if 0
+    MMX_API void xm3_transpose(float *m);
+    MMX_API void xm3_mul(float *product, const float *a, const float *b);
+    MMX_API void xm3_scale(float *m, float x, float y, float z);
+    MMX_API void xm3_transform(float *r, const float *m, const float *v);
+    MMX_API void xm3_rotate(float *m, float angle, float X, float Y, float Z);
+    MMX_API void xm3_rotate_x(float *m, float angle);
+    MMX_API void xm3_rotate_y(float *m, float angle);
+    MMX_API void xm3_rotate_z(float *m, float angle);
+    MMX_API void xm3_rotate_axis(float *m, int axis, float angle);
+    MMX_API void xm3_rotate_align(float *m, const float *d, const float *z);
+    MMX_API void xm3_from_quat(float *m, const float *q);
+#endif
+
+
+    xv_test_result();
+    return fail_count;
+}
+
 int
 main(void)
 {
     test_vector();
+    test_matrix3();
     return 0;
 }
 
