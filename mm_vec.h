@@ -1003,11 +1003,13 @@ xm4_transform(float *r, const float *m, const float *v)
     #define Y(a) a[1]
     #define Z(a) a[2]
     #define W(a) a[3]
+
     #define M(col, row) m[(col<<2)+row]
     X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v) + M(0,3)*W(v);
     Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v) + M(1,3)*W(v);
     Z(r) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v) + M(2,3)*W(v);
     W(r) = M(3,0)*X(v) + M(3,1)*Y(v) + M(3,2)*Z(v) + M(3,3)*W(v);
+
     #undef X
     #undef Y
     #undef Z
@@ -1362,9 +1364,7 @@ xs_make(float *s, const float *origin, float radius)
 MMX_API int
 xs_add_point(float *s, const float *p)
 {
-    float r;
-    float t[3];
-
+    float r, t[3];
     xv_sub(t, p, s, 3);
     r = xv_len2(t, 3);
     if (r > (s[3] * s[3])) {
@@ -1382,10 +1382,9 @@ xs_add_sphere(float *s0, const float *s1)
 {
     float r;
     float t[3];
-
-    xv_sub(t, s0, s1, 3);
+    xv_sub(t, s1, s0, 3);
     r = xv_len2(t, 3);
-    if (r > ((s0[3] + s1[3]) * (s0[3] * s1[3]))) {
+    if (r > ((s0[3] + s1[3]) * (s0[3] + s1[3]))) {
         r = (float)MMX_SQRT(r);
         xv_mulieq(t, 0.5f * (1.0f - s0[3] / (r + s1[3])), 3);
         xv_addeq(s0, t, 3);
@@ -1424,7 +1423,7 @@ MMX_API int
 xs_contains_point(const float *s, const float *p)
 {
     float t[3];
-    xv_sub(t, s, p, 3);
+    xv_sub(t, p, s, 3);
     if (xv_len2(t,3) > (s[3] * s[3]))
         return 0;
     return 1;
@@ -1494,8 +1493,8 @@ xs_intersects_ray(float *scale0, float *scale1, const float *s,
     xv_sub(p, start, s, 3);
     a = xv_dot(dir, dir, 3);
     b = xv_dot(dir, p, 3);
-    c = xv_dot( p, p, 3) - (s[3] * s[3]);
-    d = b * b -c * a;
+    c = xv_dot(p, p, 3) - (s[3] * s[3]);
+    d = b * b - c * a;
     if (d < 0.0f) return 0;
 
     sqrtd = (float)MMX_SQRT(d);
@@ -1561,7 +1560,7 @@ xb_add_point(float *b, const float *point)
         b[3] = point[0];
         expanded = 1;
     }
-    if (point[1] > b[1]) {
+    if (point[1] < b[1]) {
         b[1] = point[1];
         expanded = 1;
     }
@@ -1569,7 +1568,7 @@ xb_add_point(float *b, const float *point)
         b[4] = point[1];
         expanded = 1;
     }
-    if (point[2] > b[2]) {
+    if (point[2] < b[2]) {
         b[2] = point[2];
         expanded = 1;
     }
@@ -1596,7 +1595,7 @@ xb_add_box(float *b, const float *box)
         b[2] = box[2];
         expanded = 1;
     }
-    if (box[3] > b[2]) {
+    if (box[3] > b[3]) {
         b[3] = box[3];
         expanded = 1;
     }
@@ -1678,7 +1677,6 @@ xb_translate_self(float *r, const float *t)
 MMX_API void
 xb_transform(float *r, const float *box, const float *origin, const float *axis)
 {
-    #define M(col, row) axis[(col*3)+row]
     int i;
     float t[3];
     float center[3];
@@ -1689,15 +1687,16 @@ xb_transform(float *r, const float *box, const float *origin, const float *axis)
     xv_mulieq(center, 0.5f, 3);
     xv_sub(extents, &box[3], center, 3);
 
+    #define M(col, row) axis[(col*3)+row]
     rotExtents[0] = (float)(MMX_FABS(extents[0] * M(0,0)) + MMX_FABS(extents[1] * M(1,0)) + MMX_FABS(extents[2] * M(2,0)));
     rotExtents[1] = (float)(MMX_FABS(extents[0] * M(0,1)) + MMX_FABS(extents[1] * M(1,1)) + MMX_FABS(extents[2] * M(2,1)));
     rotExtents[2] = (float)(MMX_FABS(extents[0] * M(0,2)) + MMX_FABS(extents[1] * M(1,2)) + MMX_FABS(extents[2] * M(2,2)));
+    #undef M
 
     xm3_transform(t, axis, center);
     xv_add(center, origin, t, 3);
     xv_sub(r, center, rotExtents, 3);
     xv_add(&r[3], center, rotExtents, 3);
-    #undef M
 }
 
 MMX_API void
@@ -1731,6 +1730,7 @@ xb_plane_distance(const float *box, const float *p)
 
     xv_add(center, box, &box[3], 3);
     xv_mulieq(center, 0.5f, 3);
+
     d1 = xp_distance(p, center);
     d2 = (float)(MMX_FABS((box[3] - center[0]) * p[0]) +
         MMX_FABS((box[4] - center[1]) * p[1]) +
@@ -1751,6 +1751,7 @@ xb_plane_side(const float *s, const float *p, float epsilon)
 
     xv_add(center, s, &s[3], 3);
     xv_mulieq(center, 0.5f, 3);
+
     d1 = xp_distance(p, center);
     d2 = (float)(MMX_FABS((s[3] - center[0]) * p[0]) +
         MMX_FABS((s[4] - center[1]) * p[1]) +
