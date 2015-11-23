@@ -38,6 +38,7 @@
 
 struct xvec3 {float x,y,z;};
 struct xmat3 {float m[3][3];};
+struct xmat4 {float m[4][4];};
 
 static struct xvec3
 XV3(float x, float y, float z)
@@ -351,17 +352,13 @@ test_matrix3(void)
 
     xv_test_section("xm3_mul matrix * matrix ")
     {
-        a.m[0][0] = 1; a.m[0][1] = 2;
-        a.m[0][2] = 3; a.m[1][0] = 3;
-        a.m[1][1] = 2; a.m[1][2] = 1;
-        a.m[2][0] = 2; a.m[2][1] = 1;
-        a.m[2][2] = 3;
+        a.m[0][0] = 1; a.m[0][1] = 2; a.m[0][2] = 3;
+        a.m[1][0] = 3; a.m[1][1] = 2; a.m[1][2] = 1;
+        a.m[2][0] = 2; a.m[2][1] = 1; a.m[2][2] = 3;
 
-        b.m[0][0] = 4; b.m[0][1] = 5;
-        b.m[0][2] = 6; b.m[1][0] = 6;
-        b.m[1][1] = 5; b.m[1][2] = 4;
-        b.m[2][0] = 4; b.m[2][1] = 6;
-        b.m[2][2] = 5;
+        b.m[0][0] = 4; b.m[0][1] = 5; b.m[0][2] = 6;
+        b.m[1][0] = 6; b.m[1][1] = 5; b.m[1][2] = 4;
+        b.m[2][0] = 4; b.m[2][1] = 6; b.m[2][2] = 5;
         xm3_mul(xm(r), xm(a), xm(b));
 
         xv_test_assert(r.m[0][0] == 28.0f);
@@ -374,20 +371,93 @@ test_matrix3(void)
         xv_test_assert(r.m[2][1] == 33.0f);
         xv_test_assert(r.m[2][2] == 31.0f);
     }
+    xv_test_result();
+    return fail_count;
+}
 
-#if 0
-    MMX_API void xm3_rotate(float *m, float angle, float X, float Y, float Z);
-    MMX_API void xm3_rotate_x(float *m, float angle);
-    MMX_API void xm3_rotate_y(float *m, float angle);
-    MMX_API void xm3_rotate_z(float *m, float angle);
-    MMX_API void xm3_rotate_axis(float *m, int axis, float angle);
-    MMX_API void xm3_transpose(float *m);
-    MMX_API void xm3_transform(float *r, const float *m, const float *v);
-    MMX_API void xm3_rotate_align(float *m, const float *d, const float *z);
-    MMX_API void xm3_from_quat(float *m, const float *q);
-#endif
+static int
+test_matrix4(void)
+{
+    int pass_count = 0;
+    int fail_count = 0;
 
+    struct xmat4 a, b, r;
+    xv_test_section("xm4_identity")
+    {
+        xm4_identity(xm(a));
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 0.0f);
+        xv_test_assert(a.m[0][2] == 0.0f);
+        xv_test_assert(a.m[0][3] == 0.0f);
+        xv_test_assert(a.m[1][0] == 0.0f);
+        xv_test_assert(a.m[1][1] == 1.0f);
+        xv_test_assert(a.m[1][2] == 0.0f);
+        xv_test_assert(a.m[1][3] == 0.0f);
+        xv_test_assert(a.m[2][0] == 0.0f);
+        xv_test_assert(a.m[2][1] == 0.0f);
+        xv_test_assert(a.m[2][2] == 1.0f);
+        xv_test_assert(a.m[2][3] == 0.0f);
+        xv_test_assert(a.m[3][0] == 0.0f);
+        xv_test_assert(a.m[3][1] == 0.0f);
+        xv_test_assert(a.m[3][2] == 0.0f);
+        xv_test_assert(a.m[3][3] == 1.0f);
 
+    }
+    xv_test_section("xm4_mul identity * identity")
+    {
+        xm4_identity(xm(a));
+        xm4_identity(xm(b));
+        xm4_mul(xm(r), xm(a), xm(b));
+
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 0.0f);
+        xv_test_assert(a.m[0][2] == 0.0f);
+        xv_test_assert(a.m[0][3] == 0.0f);
+        xv_test_assert(a.m[1][0] == 0.0f);
+        xv_test_assert(a.m[1][1] == 1.0f);
+        xv_test_assert(a.m[1][2] == 0.0f);
+        xv_test_assert(a.m[1][3] == 0.0f);
+        xv_test_assert(a.m[2][0] == 0.0f);
+        xv_test_assert(a.m[2][1] == 0.0f);
+        xv_test_assert(a.m[2][2] == 1.0f);
+        xv_test_assert(a.m[2][3] == 0.0f);
+        xv_test_assert(a.m[3][0] == 0.0f);
+        xv_test_assert(a.m[3][1] == 0.0f);
+        xv_test_assert(a.m[3][2] == 0.0f);
+        xv_test_assert(a.m[3][3] == 1.0f);
+    }
+
+    xv_test_section("xm4_mul matrix * matrix ")
+    {
+        a.m[0][0] = 1; a.m[0][1] = 2; a.m[0][2] = 3; a.m[0][3] = 4;
+        a.m[1][0] = 4; a.m[1][1] = 3; a.m[1][2] = 2; a.m[1][3] = 1;
+        a.m[2][0] = 3; a.m[2][1] = 4; a.m[2][2] = 1; a.m[2][3] = 2;
+        a.m[3][0] = 2; a.m[3][1] = 1; a.m[3][2] = 4; a.m[3][3] = 3;
+
+        b.m[0][0] = 5; b.m[0][1] = 6; b.m[0][2] = 7; b.m[0][3] = 8;
+        b.m[1][0] = 8; b.m[1][1] = 7; b.m[1][2] = 6; b.m[1][3] = 5;
+        b.m[2][0] = 7; b.m[2][1] = 8; b.m[2][2] = 5; b.m[2][3] = 6;
+        b.m[3][0] = 6; b.m[3][1] = 5; b.m[3][2] = 8; b.m[3][3] = 7;
+
+        xm4_mul(xm(r), xm(a), xm(b));
+
+        xv_test_assert(r.m[0][0] == 66.0f);
+        xv_test_assert(r.m[0][1] == 64.0f);
+        xv_test_assert(r.m[0][2] == 66.0f);
+        xv_test_assert(r.m[0][3] == 64.0f);
+        xv_test_assert(r.m[1][0] == 64.0f);
+        xv_test_assert(r.m[1][1] == 66.0f);
+        xv_test_assert(r.m[1][2] == 64.0f);
+        xv_test_assert(r.m[1][3] == 66.0f);
+        xv_test_assert(r.m[2][0] == 66.0f);
+        xv_test_assert(r.m[2][1] == 64.0f);
+        xv_test_assert(r.m[2][2] == 66.0f);
+        xv_test_assert(r.m[2][3] == 64.0f);
+        xv_test_assert(r.m[3][0] == 64.0f);
+        xv_test_assert(r.m[3][1] == 66.0f);
+        xv_test_assert(r.m[3][2] == 64.0f);
+        xv_test_assert(r.m[3][3] == 66.0f);
+    }
     xv_test_result();
     return fail_count;
 }
@@ -397,6 +467,7 @@ main(void)
 {
     test_vector();
     test_matrix3();
+    test_matrix4();
     return 0;
 }
 
