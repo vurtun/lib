@@ -5,7 +5,7 @@ ABOUT:
     This is a ANSI C vector math library with header and implementations for
     vector, matrix, plane, sphere and AABB math. Under normal circumstances it
     is extremly awefull to use C for math since it does not allow to overload
-    operators. In addition I noticed while writing one math libraries after another was
+    operators. I noticed while writing one math libraries after another was
     that I had to change types and the implementation depending on the
     different C versions (C89, C99 and C11).
     Each version allows more control for example C99 has designated initializers
@@ -624,10 +624,12 @@ xv3_slerp(float *r, const float *a, float t, const float *b)
         r[0] = a[0];
         r[1] = a[1];
         r[2] = a[2];
+        return;
     } else if (t >= 1.0f) {
         r[0] = b[0];
         r[1] = b[1];
         r[2] = b[2];
+        return;
     }
 
     cosom = xv_dot(a,b,3);
@@ -860,7 +862,6 @@ xm3_mul(float *product, const float *a, const float *b)
         P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0);
         P(i,1) = ai0 * B(0,1) + ai1 * B(1,1) + ai2 * B(2,1);
         P(i,2) = ai0 * B(0,2) + ai1 * B(1,2) + ai2 * B(2,2);
-        P(i,3) = ai0 * B(0,3) + ai1 * B(1,3) + ai2 * B(2,3);
     }
     #undef A
     #undef B

@@ -430,6 +430,47 @@ test_matrix3(void)
         xv_test_assert(a.m[2][2] == 3.0f);
     }
 
+    xv_test_section("xm3_rotate_x")
+    {
+        xm3_rotate_x(xm(a), 180.0f);
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 0.0f);
+        xv_test_assert(a.m[0][2] == 0.0f);
+        xv_test_assert(a.m[1][0] == 0.0f);
+        xv_test_assert(a.m[1][1] == -1.0f);
+        xv_test_assert(a.m[1][2] <= 1e7f && a.m[1][2] >= 0.0f);
+        xv_test_assert(a.m[2][0] == 0.0f);
+        xv_test_assert(a.m[2][1] >= -1e8f && a.m[2][1] <= 0.0f);
+        xv_test_assert(a.m[2][2] == -1.0f);
+    }
+
+    xv_test_section("xm3_rotate_y")
+    {
+        xm3_rotate_y(xm(a), 180.0f);
+        xv_test_assert(a.m[0][0] == -1.0f);
+        xv_test_assert(a.m[0][1] == 0.0f);
+        xv_test_assert(a.m[0][2] >= -1e8f && a.m[0][2] <= 0.0f);
+        xv_test_assert(a.m[1][0] == 0.0f);
+        xv_test_assert(a.m[1][1] == 1.0f);
+        xv_test_assert(a.m[1][2] == 0.0f);
+        xv_test_assert(a.m[2][0] <= 1e7f && a.m[2][0] >= 0.0f);
+        xv_test_assert(a.m[2][1] == 0.0f);
+        xv_test_assert(a.m[2][2] == -1.0f);
+    }
+
+    xv_test_section("xm3_rotate_z")
+    {
+        xm3_rotate_z(xm(a), 180.0f);
+        xv_test_assert(a.m[0][0] ==-1.0f);
+        xv_test_assert(a.m[0][1] <= 1e7f && a.m[2][0] >= 0.0f);
+        xv_test_assert(a.m[0][2] == 0.0f);
+        xv_test_assert(a.m[1][0] >= -1e8f && a.m[1][0] <= 0.0f);
+        xv_test_assert(a.m[1][1] == -1.0f);
+        xv_test_assert(a.m[1][2] == 0.0f);
+        xv_test_assert(a.m[2][1] == 0.0f);
+        xv_test_assert(a.m[2][2] == 1.0f);
+    }
+
     xv_test_section("xm3_from_quat_identity")
     {
         const float quat[4] = {0,0,0,1};
@@ -613,7 +654,7 @@ test_quat(void)
         angle = xq_get_rotation(&axis.x, q);
         angle = MMX_RAD2DEG(angle);
         xv_test_assert(axis.x == 0.0f);
-        xv_test_assert(axis.y > 0.9999999f && axis.y < 1.0f);
+        xv_test_assert(axis.y > 0.9999999f && axis.y <= 1.0f);
         xv_test_assert(axis.z == 0);
         xv_test_assert(angle > 45.0f && angle < 45.00001);
     }
