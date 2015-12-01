@@ -5,7 +5,7 @@ ABOUT:
     This is a ANSI C vector math library with header and implementations for
     vector, matrix, plane, sphere and AABB math. Under normal circumstances it
     is extremly awefull to use C for math since it does not allow to overload
-    operators. I noticed while writing one math libraries after another was
+    operators. I noticed while writing one math libraries after another
     that I had to change types and the implementation depending on the
     different C versions (C89, C99 and C11).
     Each version allows more control for example C99 has designated initializers
@@ -401,7 +401,7 @@ MMX_API void xs_make(float *s, const float *origin, float radius);
 MMX_API int xs_add_point(float *s, const float *point);
 MMX_API int xs_add_sphere(float *s, const float *sphere);
 MMX_API void xs_expand(float *r, const float *s, float d);
-MMX_API void xs_expand_eq(float *s, float d);
+MMX_API void xs_expand_self(float *s, float d);
 MMX_API void xs_translate(float *r, const float *s, const float *t);
 MMX_API void xs_translate_self(float *r, const float *t);
 MMX_API float xs_plane_distance(const float *s, const float *p);
@@ -1104,8 +1104,8 @@ xq_rotation(float *q, float angle, float x, float y, float z)
 MMX_API float
 xq_get_rotation(float *axis, const float *q)
 {
-    float angle = (float)acos(q[3]);
-    float sine = (float)sin(angle);
+    float angle = (float)MMX_ACOS(q[3]);
+    float sine = (float)MMX_SIN(angle);
     if (sine >= 0.00001f) {
         xv_muli(axis, q, 1.0f/sine,3);
         return 2*angle;
