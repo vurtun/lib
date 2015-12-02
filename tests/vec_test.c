@@ -486,6 +486,23 @@ test_matrix3(void)
         xv_test_assert(r.m[2][2] == 1.0f);
     }
 
+    xv_test_section("xm3_from_mat4_identity")
+    {
+        float mat4[16];
+        xm4_identity(mat4);
+        xm3_from_mat4(xm(r), mat4);
+
+        xv_test_assert(r.m[0][0] == 1.0f);
+        xv_test_assert(r.m[0][1] == 0.0f);
+        xv_test_assert(r.m[0][2] == 0.0f);
+        xv_test_assert(r.m[1][0] == 0.0f);
+        xv_test_assert(r.m[1][1] == 1.0f);
+        xv_test_assert(r.m[1][2] == 0.0f);
+        xv_test_assert(r.m[2][0] == 0.0f);
+        xv_test_assert(r.m[2][1] == 0.0f);
+        xv_test_assert(r.m[2][2] == 1.0f);
+    }
+
     xv_test_result();
     return fail_count;
 }
@@ -633,6 +650,53 @@ test_matrix4(void)
         a.m[3][0] = 6; a.m[3][1] = 3; a.m[3][2] = 2; a.m[3][3] = 1;
         xm4_transform(xv(rv), xm(a), xv(v));
         xv_test_vec4(rv, 46.0f, 50.0f, 73.0f, 37.0f);
+    }
+
+    xv_test_section("xm4_from_quat_identity")
+    {
+        const float quat[4] = {0,0,0,1};
+        xm4_from_quat(xm(a), quat);
+
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 0.0f);
+        xv_test_assert(a.m[0][2] == 0.0f);
+        xv_test_assert(a.m[0][3] == 0.0f);
+        xv_test_assert(a.m[1][0] == 0.0f);
+        xv_test_assert(a.m[1][1] == 1.0f);
+        xv_test_assert(a.m[1][2] == 0.0f);
+        xv_test_assert(a.m[1][3] == 0.0f);
+        xv_test_assert(a.m[2][0] == 0.0f);
+        xv_test_assert(a.m[2][1] == 0.0f);
+        xv_test_assert(a.m[2][2] == 1.0f);
+        xv_test_assert(a.m[2][3] == 0.0f);
+        xv_test_assert(a.m[3][0] == 0.0f);
+        xv_test_assert(a.m[3][1] == 0.0f);
+        xv_test_assert(a.m[3][2] == 0.0f);
+        xv_test_assert(a.m[3][3] == 1.0f);
+    }
+
+    xv_test_section("xm4_from_mat3_identity")
+    {
+        float mat3[9];
+        xm3_identity(mat3);
+        xm4_from_mat3(xm(a), mat3);
+
+        xv_test_assert(a.m[0][0] == 1.0f);
+        xv_test_assert(a.m[0][1] == 0.0f);
+        xv_test_assert(a.m[0][2] == 0.0f);
+        xv_test_assert(a.m[0][3] == 0.0f);
+        xv_test_assert(a.m[1][0] == 0.0f);
+        xv_test_assert(a.m[1][1] == 1.0f);
+        xv_test_assert(a.m[1][2] == 0.0f);
+        xv_test_assert(a.m[1][3] == 0.0f);
+        xv_test_assert(a.m[2][0] == 0.0f);
+        xv_test_assert(a.m[2][1] == 0.0f);
+        xv_test_assert(a.m[2][2] == 1.0f);
+        xv_test_assert(a.m[2][3] == 0.0f);
+        xv_test_assert(a.m[3][0] == 0.0f);
+        xv_test_assert(a.m[3][1] == 0.0f);
+        xv_test_assert(a.m[3][2] == 0.0f);
+        xv_test_assert(a.m[3][3] == 1.0f);
     }
 
     xv_test_result();
