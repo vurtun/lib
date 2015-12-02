@@ -392,6 +392,53 @@ MMX_API float xq_get_rotation(float *axis, const float *q);
 #define xq_lerp(r,a,t,b) xv_lerp(r,a,t,b,4)
 #define xq_lerpeq(r,a,t,b) xv_lerp(a,a,t,b,4)
 #define xq_lerp_norm(len, r,a,t,b) xv_lerp(r,a,t,b,4); xv_normeq(len, r)
+#define xq_add(r, a, b) xv_add(r, a, b, 4)
+#define xq_sub(r, a, b) xv_sub(r, a, b, 4)
+#define xq_addeq(r, b) xv_addeq(r, b, 4)
+#define xq_subeq(r, b) xv_subeq(r, b, 4)
+#define xq_muli(r, a, s) xv_muli(r, a, s, 4)
+#define xq_divi(r, a, s) xv_divi(r, a, s, 4)
+#define xq_mulieq(r, s) xv_mulieq(r, s, 4)
+#define xq_divieq(r, s) xv_divieq(r, s, 4)
+
+/* ---------------------------------------------------------------
+ *                          COMPLEX
+ * ---------------------------------------------------------------*/
+/* complex = {real, imaginary} */
+#define xc(q) ((float*)&(q))
+#define xc_add(r,a,b) xv_add(r,a,b,2)
+#define xc_sub(r,a,b) xv_sub(r,a,b,2)
+MMX_API void xc_mul(float *r, const float *a, const float *b);
+MMX_API void xc_div(float *r, const float *a, const float *b);
+
+#define xc_addeq(r,b) xv_addeq(r,b,2)
+#define xc_subeq(r,b) xv_subeq(r,b,2)
+#define xc_muleq(r,b) xc_mul(r, r, b)
+#define xc_diveq(r,b) xc_div(r, r, b)
+
+#define xc_addi(r,a,s) ((r)[0] = (a)[0] + (s), (r)[1] = (a)[1])
+#define xc_subi(r,a,s) ((r)[0] = (a)[0] - (s), (r)[1] = (a)[1])
+#define xc_muli(r,a,s) ((r)[0] = (a)[0] * (s), (r)[1] = (a)[1] * (s))
+#define xc_divi(r,a,s) ((r)[0] = (a)[0] / (s), (r)[1] = (a)[1] / (s))
+
+#define xc_addf(r,s,a) ((r)[0] = (s) + (a)[0], (r)[1] = (a)[1])
+#define xc_subf(r,s,a) ((r)[0] = (s) - (a)[0], (r)[1] = -(a)[1])
+#define xc_mulf(r,s,a) ((r)[0] = (s) * (a)[0], (r)[2] = (s)*(a)[1])
+MMX_API void xc_divf(float *r, float a, const float *b);
+
+#define xc_addfeq(r,s) xc_addf(r, s, r)
+#define xc_subfeq(r,s) xc_subf(r, s, r)
+#define xc_mulfeq(r,s) xc_mulf(r, s, r)
+#define xc_divfeq(r,s) xc_divf(r, s, r)
+
+#define xc_addieq(r,s) xc_addi(r, r, s)
+#define xc_subieq(r,s) xc_subi(r, r, s)
+#define xc_mulieq(r,s) xc_muli(r, r, s)
+#define xc_divieq(r,s) xc_divi(r, r, s)
+
+MMX_API void xc_sqrt(float *r, const float *c);
+MMX_API float xc_abs(const float *c);
+MMX_API void xc_reciprocal(float *r, const float *c);
 
 /* ---------------------------------------------------------------
  *                          PLANE
@@ -435,7 +482,7 @@ MMX_API float xs_plane_distance(const float *s, const float *p);
 MMX_API int xs_plane_side(const float *s, const float *p, float epsilon);
 MMX_API int xs_contains_point(const float *s, const float *p);
 MMX_API int xs_intersects_line(const float *s2, const float *start, const float *end);
-MMX_API int xs_intersects_ray(float *scale0, float *scale1, const float *s2, const float *start, const float *dir);
+MMX_API int xs_intersects_ray(float *scale0, float *scale1, const float *sphere, const float *start, const float *dir);
 MMX_API int xs_intersects_sphere(const float *s2, const float *s1);
 MMX_API void xs_from_box(float *sphere, const float *box);
 
@@ -446,6 +493,7 @@ MMX_API void xs_from_box(float *sphere, const float *box);
 /* box = {min(x,y,z)},max(x,y,z)}*/
 #define xb(p) ((float*)&(p))
 MMX_API void xb_make(float *b, const float *min, const float *max);
+MMX_API void xb_from_points(float *b, const void *verts, int num, int stride, int offset);
 MMX_API int xb_add_point(float *b, const float *point);
 MMX_API int xb_add_box(float *b, const float *box);
 MMX_API void xb_center(float *center, const float *box);
@@ -791,6 +839,8 @@ xv3_project_along_plane(float *r, const float *v, const float *normal,
     xv_sub(r, v, cross, 3);
     return 1;
 }
+
+
 /* ---------------------------------------------------------------
  *                          Matrix
  * ---------------------------------------------------------------*/
@@ -1642,6 +1692,146 @@ xq_from_mat3(float *q, const float *m)
 }
 
 /* ---------------------------------------------------------------
+ *                          COMPLEX
+ * ---------------------------------------------------------------*/
+MMX_API void
+xc_mul(float *d, const float *a, const float *b)
+{
+    #define R(v) (v)[0]
+    #define I(v) (v)[1]
+    float r = R(a) * R(b) - I(a) * I(b);
+    float i = I(a) * R(b) + R(a) * I(b);
+    R(d) = r; I(d) = r;
+    #undef R
+    #undef I
+}
+
+MMX_API void
+xc_div(float *d,const float *a, const float *b)
+{
+    #define R(v) (v)[0]
+    #define I(v) (v)[1]
+    float s, t, r, i;
+    if (MMX_FABS(R(b)) >= MMX_FABS(I(b))) {
+        s = I(b) / R(b);
+        t = 1.0f / (R(b) + s * I(b));
+        r = (R(a) + s * I(a)) * t;
+        i = (I(a) - s * R(a)) * t;
+    } else {
+        s = R(b) / I(b);
+        t = 1.0f / (s * R(b) + I(b));
+        r = (R(a) *s + I(a)) * t;
+        i = (I(a) *s - R(a)) * t;
+    }
+    R(d) = r;
+    I(d) = i;
+    #undef R
+    #undef I
+}
+
+MMX_API void
+xc_divf(float *d, float a, const float *b)
+{
+    #define R(v) (v)[0]
+    #define I(v) (v)[1]
+    float s, t, r, i;
+    if (MMX_FABS(R(b)) >= MMX_FABS(I(b))) {
+        s = I(b) / R(b);
+        t = a / (R(b) + s * I(b));
+        r = t;
+        i = -s * t;
+    } else {
+        s = R(b) / I(b);
+        t = a / (s * R(b) + I(b));
+        r = s * t;
+        i = -t;
+    }
+    R(d) = r;
+    I(d) = i;
+    #undef R
+    #undef I
+}
+
+MMX_API void
+xc_sqrt(float *d, const float *c)
+{
+    #define R(v) (v)[0]
+    #define I(v) (v)[1]
+    float x, y, w;
+    if (R(c) == 0.0f && I(c) == 0.0f) {
+        R(d) = 0.0f;
+        I(d) = 0.0f;
+        return;
+    }
+    x = (float)MMX_FABS(R(c));
+    y = (float)MMX_FABS(I(c));
+    if (x >= y) {
+        w = y / x;
+        w = (float)MMX_SQRT(x) * (float)MMX_SQRT(0.5f * (1.0f + (float)MMX_SQRT(1.0f + w * w)));
+    } else {
+        w = x / y;
+        w = (float)MMX_SQRT(y) * (float)MMX_SQRT(0.5f * (w + (float)MMX_SQRT(1.0f + w * w)));
+    }
+
+    if (w == 0.0f) {
+        R(d) = 0.0f;
+        I(d) = 0.0f;
+    } else if (R(c) >= 0.0f) {
+        R(d) = w;
+        I(d) = 0.5f * I(c) / w;
+    } else {
+        R(d) = 0.5f * y / w;
+        I(d) = (I(c) >= 0.0f) ? w : -w;
+    }
+    #undef R
+    #undef I
+}
+
+MMX_API float
+xc_abs(const float *a)
+{
+    #define R(v) (v)[0]
+    #define I(v) (v)[1]
+    float x,y,t;
+    x = (float)MMX_FABS(R(a));
+    y = (float)MMX_FABS(I(a));
+    if (x == 0.0f)
+        return y;
+    else if (y == 0.0f)
+        return x;
+    else if (x > y) {
+        t = y / x;
+        return x * (float)MMX_SQRT(1.0f + t * t);
+    } else {
+        t = x / y;
+        return y * (float)MMX_SQRT(1.0f + t * t);
+    }
+    #undef R
+    #undef I
+}
+
+MMX_API void
+xc_reciprocal(float *d, const float *c)
+{
+    #define R(v) (v)[0]
+    #define I(v) (v)[1]
+    float s, t;
+    if (MMX_FABS(R(c)) >= MMX_FABS(I(c))) {
+        s = I(c) / R(c);
+        t = 1.0f / (R(c) + s * I(c));
+        R(d) = t;
+        I(d) = -s * t;
+    } else {
+        s = R(c) / I(c);
+        t = 1.0f / (s * R(c) + I(c));
+        R(d) = s * t;
+        I(d) = -t;
+    }
+    #undef R
+    #undef I
+}
+
+/* ---------------------------------------------------------------
  *                          PLANE
  * ---------------------------------------------------------------*/
 MMX_API void
@@ -1990,6 +2180,30 @@ xb_radius(float *radius, const float *b)
         else total += b1 * b1;
     }
     *radius = (float)MMX_SQRT(total);
+}
+
+MMX_API void
+xb_from_points(float *b, const void *verts, int num, int stride, int offset)
+{
+    int i = 0;
+    const float *vert;
+    const unsigned char *data = (const unsigned char*)verts;
+
+    data += offset;
+    vert = (const float*)(const void*)data;
+    xb_make(b, vert, vert);
+    data += stride;
+    for (i = 0; i < num; ++i) {
+        vert = (const float*)(const void*)data;
+        b[0] = MMX_MIN(vert[0], b[0]);
+        b[1] = MMX_MIN(vert[1], b[1]);
+        b[2] = MMX_MIN(vert[2], b[2]);
+
+        b[3] = MMX_MAX(vert[0], b[3]);
+        b[4] = MMX_MAX(vert[1], b[4]);
+        b[5] = MMX_MAX(vert[2], b[5]);
+        data += stride;
+    }
 }
 
 MMX_API int
