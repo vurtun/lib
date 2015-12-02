@@ -41,7 +41,7 @@ CONCEPT:
     object tree and you can access the tree by a number of utility functions.
 
     Utility
-    The library has a number of utility functions the access or parse and convert
+    The library has a number of utility functions to access or parse and convert
     a previously read token. In addition if you use the parser a number of functions
     are provided to look for a token inside the parsed array.
 
@@ -579,7 +579,8 @@ mmj_init(void)
     int i;
     if (mmj_is_initialized) return;
     mmj_is_initialized = 1;
-    for (i = 48; i <= 57; ++i) mmj_go_struct[i] = MMJ_STATE_BARE;
+    for (i = 48; i <= 57; ++i)
+        mmj_go_struct[i] = MMJ_STATE_BARE;
     mmj_go_struct['\t'] = MMJ_STATE_LOOP;
     mmj_go_struct['\r'] = MMJ_STATE_LOOP;
     mmj_go_struct['\n'] = MMJ_STATE_LOOP;
@@ -597,7 +598,8 @@ mmj_init(void)
     mmj_go_struct['f'] = MMJ_STATE_BARE;
     mmj_go_struct['n'] = MMJ_STATE_BARE;
 
-    for (i = 32; i <= 126; ++i) mmj_go_bare[i] = MMJ_STATE_LOOP;
+    for (i = 32; i <= 126; ++i)
+        mmj_go_bare[i] = MMJ_STATE_LOOP;
     mmj_go_bare['\t'] = MMJ_STATE_UNBARE;
     mmj_go_bare['\r'] = MMJ_STATE_UNBARE;
     mmj_go_bare['\n'] = MMJ_STATE_UNBARE;
@@ -615,7 +617,6 @@ mmj_init(void)
         mmj_go_string[i] = MMJ_STATE_UTF8_4;
     mmj_go_string['\\'] = MMJ_STATE_ESC;
     mmj_go_string['"'] = MMJ_STATE_QDOWN;
-
     for (i = 128; i <= 191; ++i)
         mmj_go_utf8[i] = MMJ_STATE_UTF8_NEXT;
 

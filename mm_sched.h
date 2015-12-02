@@ -22,7 +22,7 @@ DEFINE:
         should hold the implementation.
 
     MMS_STATIC
-        The generated implementation will stay private inside implementation
+        The generated implementation will stay private inside the implementation
         file and all internal symbols and functions will only be visible inside
         that file.
 

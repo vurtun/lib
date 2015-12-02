@@ -122,7 +122,6 @@ int main(int argc, const char * argv[])
     memset(config, 0, sizeof(config));
     config.address = "127.0.0.1";
     config.port = 8888;
-    config.dispatch = dispatch;
     config.connection_max = 8;
     config.request_buffer_size = 2048;
     config.io_buffer_size = 8192;
