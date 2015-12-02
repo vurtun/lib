@@ -36,6 +36,14 @@ DEFINES:
         and validate them at compile time. If they are incorrect, you will
         get compile errors and will need to define them yourself.
 
+    MMS_MEMSET
+        You can define this to 'memset' or your own memset replacement.
+        If not, mm_sched.h uses a naive (maybe inefficent) implementation.
+
+    MMS_MEMCPY
+        You can define this to 'memcpy' or your own memset replacement.
+        If not, mm_sched.h uses a naive (maybe inefficent) implementation.
+
     MMX_SIN
     MMX_FABS
     MMX_COS
@@ -67,8 +75,9 @@ LICENSE: (zlib)
     3.  This notice may not be removed or altered from any source distribution.
 
 
-LIMITATIONS:
-    - so far only the vector math was extensivly tested
+TESTED:
+    + vector
+    + matrix
 
 USAGE:
     This file behaves differently depending on what symbols you define
@@ -81,7 +90,7 @@ USAGE:
 
     Implementation mode:
     If you define MMX_IMPLEMENTATIOn before including this file, it will
-    compile the implementation of the JSON parser. To specify the visibility
+    compile the implementation of the math library. To specify the visibility
     as private and limit all symbols inside the implementation file
     you can define MMX_STATIC before including this file.
     Make sure that you only include this file implementation in *one* C or C++ file
@@ -316,6 +325,16 @@ MMX_API int xv3_project_along_plane(float *r, const float *v, const float *norma
 #define XM_AXIS_Z 2
 
 #define xm(m) ((float*)&(m))
+MMX_API void xm2_identity(float *m);
+MMX_API void xm2_transpose(float *m);
+MMX_API void xm2_mul(float *product, const float *a, const float *b);
+MMX_API void xm2_transform(float *r, const float *m, const float *v);
+MMX_API void xm2_rotate(float *m, float angle);
+MMX_API void xm2_scale(float *m, float x, float y);
+MMX_API float xm2_determinant(const float *m);
+MMX_API int xm2_inverse_self(float *m);
+MMX_API int xm2_inverse(float *r, const float *m);
+
 MMX_API void xm3_identity(float *m);
 MMX_API void xm3_transpose(float *m);
 MMX_API void xm3_mul(float *product, const float *a, const float *b);
@@ -327,6 +346,9 @@ MMX_API void xm3_rotate_y(float *m, float angle);
 MMX_API void xm3_rotate_z(float *m, float angle);
 MMX_API void xm3_rotate_axis(float *m, int axis, float angle);
 MMX_API void xm3_rotate_align(float *m, const float *dest, const float *src);
+MMX_API float xm3_determinant(const float *m);
+MMX_API int xm3_inverse_self(float *m);
+MMX_API int xm3_inverse(float *r, const float *m);
 MMX_API void xm3_from_quat(float *m, const float *q);
 MMX_API void xm3_from_mat4(float *r, const float *m);
 
@@ -334,8 +356,13 @@ MMX_API void xm4_identity(float *m);
 MMX_API void xm4_transpose(float *m);
 MMX_API void xm4_translate(float *m, float x, float y, float z);
 MMX_API void xm4_mul(float *product, const float *a, const float *b);
+MMX_API float xm4_determinant(const float *m);
+MMX_API int xm4_inverse_self(float *m);
+MMX_API int xm4_inverse(float *r, const float *m);
 MMX_API void xm4_transform(float *r, const float *m, const float *v);
 MMX_API void xm4_ortho(float *m, float left, float right, float bottom, float top);
+MMX_API void xm4_orthographic(float *m, float left, float right, float bottom, float top, float near, float far);
+MMX_API void xm4_frustum(float *m, float left, float right, float buttom, float top, float near, float far);
 MMX_API void xm4_persp(float *m, float fov, float aspect, float near, float far);
 MMX_API void xm4_lookat(float *m, const float *eye, const float *center, const float *up);
 MMX_API void xm4_from_quat(float *m, const float *q);
@@ -460,7 +487,7 @@ MMX_API int xb_intersects_box(const float *a, const float *b);
 #define MMX_DEG2RAD(a) ((a)*(MMX_PI/180.0f))
 #define MMX_RAD2DEG(a) ((a)*(180.0f/MMX_PI))
 
-/* make sure atomic and pointer types have correct size */
+/* make sure we have a correct 32-bit integer type */
 typedef int mmx__check_uint32_size[(sizeof(mmx_uint) == 4) ? 1 : -1];
 
 #ifdef __cplusplus
@@ -528,6 +555,22 @@ template<typename T> struct xv_alignof{struct Big {T x; char c;}; enum {
 #define MMX_PI 3.141592654f
 #endif
 
+#ifndef MMX_MATRIX_EPISLON
+#define MMX_MATRIX_EPISLON 1e-6
+#endif
+
+#ifndef MMX_MATRIX_INVERSE_EPISLON
+#define MMX_MATRIX_INVERSE_EPISLON 1e-14
+#endif
+
+#ifndef MMX_MEMSET
+#define MMX_MEMSET xv_memset
+#endif
+
+#ifndef MMX_MEMCPY
+#define MMX_MEMCPY xv_memcpy
+#endif
+
 /* ---------------------------------------------------------------
  *                          UTIL
  * ---------------------------------------------------------------*/
@@ -544,8 +587,63 @@ xv_inv_sqrt(float number)
     return conv.f;
 }
 
+static void*
+xv_memcpy(void *dst0, const void *src0, mmx_size length)
+{
+    mmx_ptr t;
+    typedef int word;
+    char *dst = dst0;
+    const char *src = src0;
+    if (length == 0 || dst == src)
+        goto done;
+
+    #define wsize sizeof(word)
+    #define wmask (wsize-1)
+    #define TLOOP(s) if (t) TLOOP1(s)
+    #define TLOOP1(s) do { s; } while (--t)
+
+    if (dst < src) {
+        t = (mmx_ptr)src; /* only need low bits */
+        if ((t | (mmx_ptr)dst) & wmask) {
+            if ((t ^ (mmx_ptr)dst) & wmask || length < wsize)
+                t = length;
+            else
+                t = wsize - (t & wmask);
+            length -= t;
+            TLOOP1(*dst++ = *src++);
+        }
+        t = length / wsize;
+        TLOOP(*(word*)(void*)dst = *(const word*)(const void*)src; src += wsize; dst += wsize);
+        t = length & wmask;
+        TLOOP(*dst++ = *src++);
+    } else {
+        src += length;
+        dst += length;
+        t = (mmx_ptr)src;
+        if ((t | (mmx_ptr)dst) & wmask) {
+            if ((t ^ (mmx_ptr)dst) & wmask || length <= wsize)
+                t = length;
+            else
+                t &= wmask;
+            length -= t;
+            TLOOP1(*--dst = *--src);
+        }
+        t = length / wsize;
+        TLOOP(src -= wsize; dst -= wsize; *(word*)(void*)dst = *(const word*)(const void*)src);
+        t = length & wmask;
+        TLOOP(*--dst = *--src);
+    }
+    #undef wsize
+    #undef wmask
+    #undef TLOOP
+    #undef TLOOP1
+done:
+    return (dst0);
+}
+
+
 MMX_INTERN void
-xv_fill_size(void *ptr, int c0, unsigned long size)
+xv_memset(void *ptr, int c0, unsigned long size)
 {
     #define word unsigned
     #define wsize sizeof(word)
@@ -599,7 +697,7 @@ xv_fill_size(void *ptr, int c0, unsigned long size)
 MMX_INTERN void
 xv_zero_size(void *ptr, mmx_size size)
 {
-    xv_fill_size(ptr, 0, size);
+    MMX_MEMSET(ptr, 0, size);
 }
 
 /* ---------------------------------------------------------------
@@ -696,6 +794,112 @@ xv3_project_along_plane(float *r, const float *v, const float *normal,
 /* ---------------------------------------------------------------
  *                          Matrix
  * ---------------------------------------------------------------*/
+MMX_API void
+xm2_identity(float *m)
+{
+    #define M(col, row) m[(col<<1)+row]
+    M(0,0) = 1.0f; M(0,1) = 0.0f;
+    M(0,0) = 0.0f; M(0,1) = 1.0f;
+    #undef M
+}
+
+MMX_API void
+xm2_transpose(float *m)
+{
+    #define M(col, row) m[(col<<1)+row]
+    float temp = M(0,1);
+    M(0,1) = M(1,0);
+    M(1,0) = temp;
+    #undef M
+}
+
+MMX_API void
+xm2_mul(float *product, const float *a, const float *b)
+{
+    #define A(col, row) a[(col<<1)+row]
+    #define B(col, row) b[(col<<1)+row]
+    #define P(col, row) product[(col<<1)+row]
+    P(0,0) = A(0,0) * B(0,0) + A(0,1) * B(1,0);
+    P(0,1) = A(0,0) * B(0,1) + A(0,1) * B(1,1);
+    P(1,0) = A(1,0) * B(0,0) + A(1,1) * B(1,0);
+    P(1,1) = A(1,0) * B(0,1) + A(1,1) * B(1,1);
+    #undef A
+    #undef B
+    #undef P
+}
+
+MMX_API void
+xm2_transform(float *r, const float *m, const float *v)
+{
+    #define X(a) a[0]
+    #define Y(a) a[1]
+    #define M(col, row) m[(col<<1)+row]
+    X(r) = M(0,0)*X(v) + M(0,1)*Y(v);
+    Y(r) = M(1,0)*X(v) + M(1,1)*Y(v);
+    #undef X
+    #undef Y
+    #undef M
+}
+
+MMX_API void
+xm2_rotate(float *m, float angle)
+{
+    #define M(col, row) m[(col<<1)+row]
+    float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
+    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+    if (angle >= 0) {
+        M(0,0) =  c; M(0,1) = s;
+        M(1,0) = -s; M(1,1) = c;
+    } else {
+        M(0,0) =  c; M(0,1) = -s;
+        M(1,0) =  s; M(1,1) =  c;
+    }
+    #undef M
+}
+
+MMX_API void
+xm2_scale(float *m, float x, float y)
+{
+    #define M(col, row) m[(col<<1)+row]
+    M(0,0) = x; M(0,1) = 0;
+    M(0,0) = 0; M(0,1) = y;
+    #undef M
+}
+
+MMX_API float
+xm2_determinant(const float *m)
+{
+    #define M(col, row) m[(col<<1)+row]
+    return M(0,0) * M(1,1) - M(0,1) * M(1,0);
+    #undef M
+}
+
+MMX_API int
+xm2_inverse_self(float *m)
+{
+    #define M(col, row) m[(col<<1)+row]
+    float det, inv_det, a;
+    det = M(0,0) * M(1,1) - M(0,1) * M(1,0);
+    if (MMX_FABS(det) < MMX_MATRIX_INVERSE_EPISLON)
+        return 0;
+
+    inv_det = 1.0f/det;
+    a = M(0,0);
+    M(0,0) = M(1,1) * inv_det;
+    M(0,1) = -M(0,1) * inv_det;
+    M(1,0) = -M(1,0) * inv_det;
+    M(1,1) = a * inv_det;
+    #undef M
+    return 1;
+}
+
+MMX_API int
+xm2_inverse(float *r, const float *m)
+{
+    MMX_MEMCPY(r, m, sizeof(float) * 4);
+    return xm2_inverse_self(r);
+}
+
 MMX_API void
 xm3_identity(float *m)
 {
@@ -846,7 +1050,6 @@ xm3_transform(float *r, const float *m, const float *v)
     #undef X
     #undef Y
     #undef Z
-    #undef W
     #undef M
 }
 
@@ -866,6 +1069,63 @@ xm3_mul(float *product, const float *a, const float *b)
     #undef A
     #undef B
     #undef P
+}
+
+MMX_API float
+xm3_determinant(const float *m)
+{
+    #define M(col, row) m[(col<<2)+row]
+    float det2_12_01 = M(1,0) * M(2,1) - M(1,1) * M(2,0);
+    float det2_12_02 = M(1,0) * M(2,2) - M(1,2) * M(2,0);
+    float det2_12_12 = M(1,1) * M(2,2) - M(1,2) * M(2,1);
+    return M(0,0) * det2_12_12 - M(0,1) * det2_12_02 + M(0,2) * det2_12_01;
+    #undef M
+}
+
+MMX_API int
+xm3_inverse_self(float *m)
+{
+    float i[3*3];
+    float det, inv_det;
+    #define M(col, row) m[(col*3)+row]
+    #define I(col, row) i[(col*3)+row]
+    I(0,0) = M(1,1) * M(2,2) - M(1,2) * M(2,1);
+    I(1,0) = M(1,2) * M(2,0) - M(1,0) * M(2,2);
+    I(2,0) = M(1,0) * M(2,1) - M(1,1) * M(2,0);
+    det = M(0,0) * I(0,0) + M(0,1) * I(1,0) + M(0,2) * M(2,0);
+    if (MMX_FABS(det) < MMX_MATRIX_INVERSE_EPISLON)
+        return 0;
+
+    inv_det = 1.0f / det;
+    I(0,1) = M(0,2) * M(2,1) - M(0,1) * M(2,2);
+    I(0,2) = M(0,1) * M(1,2) - M(0,2) * M(1,1);
+    I(1,1) = M(0,0) * M(2,2) - M(0,2) * M(2,0);
+    I(1,2) = M(0,2) * M(1,0) - M(0,0) * M(1,2);
+    I(2,1) = M(0,1) * M(2,0) - M(0,0) * M(2,1);
+    I(2,2) = M(0,0) * M(1,1) - M(0,1) * M(1,0);
+
+    M(0,0) = I(0,0) * inv_det;
+    M(0,1) = I(0,1) * inv_det;
+    M(0,2) = I(0,2) * inv_det;
+
+    M(1,0) = I(1,0) * inv_det;
+    M(1,1) = I(1,1) * inv_det;
+    M(1,2) = I(1,2) * inv_det;
+
+    M(2,0) = I(2,0) * inv_det;
+    M(2,1) = I(2,1) * inv_det;
+    M(2,2) = I(2,2) * inv_det;
+
+    #undef I
+    #undef M
+    return 1;
+}
+
+MMX_API int
+xm3_inverse(float *r, const float *m)
+{
+    MMX_MEMCPY(r, m, sizeof(float) * 9);
+    return xm3_inverse_self(r);
 }
 
 MMX_API void
@@ -965,6 +1225,112 @@ xm4_mul(float *product, const float *a, const float *b)
     #undef P
 }
 
+MMX_API float
+xm4_determinant(const float *m)
+{
+    #define M(col, row) m[(col<<2)+row]
+    float det2_01_01 = M(0,0) * M(1,1) - M(0,1) * M(1,0);
+    float det2_01_02 = M(0,0) * M(1,2) - M(0,2) * M(1,0);
+    float det2_01_03 = M(0,0) * M(1,3) - M(0,3) * M(1,0);
+    float det2_01_12 = M(0,1) * M(1,2) - M(0,2) * M(1,1);
+    float det2_01_13 = M(0,1) * M(1,3) - M(0,3) * M(1,1);
+    float det2_01_23 = M(0,2) * M(1,3) - M(0,3) * M(1,2);
+
+    float det3_201_012 = M(2,0) * det2_01_12 - M(2,1) * det2_01_02 + M(2,2) * det2_01_01;
+    float det3_201_013 = M(2,0) * det2_01_13 - M(2,1) * det2_01_03 + M(2,3) * det2_01_01;
+    float det3_201_023 = M(2,0) * det2_01_23 - M(2,2) * det2_01_03 + M(2,3) * det2_01_02;
+    float det3_201_123 = M(2,1) * det2_01_23 - M(2,2) * det2_01_13 + M(2,3) * det2_01_12;
+    return (-det3_201_123 * M (3,0) + det3_201_023 * M(3,1) - det3_201_013* M(3,2) + det3_201_012 * M(3,3));
+    #undef M
+}
+
+MMX_API int
+xm4_inverse_self(float *m)
+{
+    #define M(col, row) m[(col<<2)+row]
+    float det, inv_det;
+
+    float det2_03_01, det2_03_02, det2_03_03, det2_03_12, det2_03_13,det2_03_23;
+    float det2_13_01, det2_13_02, det2_13_03, det2_13_12, det2_13_13, det2_13_23;
+    float det3_203_012, det3_203_013, det3_203_023, det3_203_123;
+    float det3_213_012, det3_213_013, det3_213_023, det3_213_123;
+    float det3_301_012, det3_301_013, det3_301_023, det3_301_123;
+
+    float det2_01_01 = M(0,0) * M(1,1) - M(0,1) * M(1,0);
+    float det2_01_02 = M(0,0) * M(1,2) - M(0,2) * M(1,0);
+    float det2_01_03 = M(0,0) * M(1,3) - M(0,3) * M(1,0);
+    float det2_01_12 = M(0,1) * M(1,2) - M(0,2) * M(1,1);
+    float det2_01_13 = M(0,1) * M(1,3) - M(0,3) * M(1,1);
+    float det2_01_23 = M(0,2) * M(1,3) - M(0,3) * M(1,2);
+
+    float det3_201_012 = M(2,0) * det2_01_12 - M(2,1) * det2_01_02 + M(2,2) * det2_01_01;
+    float det3_201_013 = M(2,0) * det2_01_13 - M(2,1) * det2_01_03 + M(2,3) * det2_01_01;
+    float det3_201_023 = M(2,0) * det2_01_23 - M(2,2) * det2_01_03 + M(2,3) * det2_01_02;
+    float det3_201_123 = M(2,1) * det2_01_23 - M(2,2) * det2_01_13 + M(2,3) * det2_01_12;
+    det = (-det3_201_123 * M(3,0) + det3_201_023 * M(3,1) - det3_201_013 * M(3,2) + det3_201_012 * M(3,3));
+    if (MMX_FABS(det) < MMX_MATRIX_INVERSE_EPISLON)
+        return 0;
+
+    inv_det = 1.0f / det;
+    det2_03_01 = M(0,0) * M(3,1) - M(0,1) * M(3,0);
+    det2_03_02 = M(0,0) * M(3,2) - M(0,2) * M(3,0);
+    det2_03_03 = M(0,0) * M(3,3) - M(0,3) * M(3,0);
+    det2_03_12 = M(0,1) * M(3,2) - M(0,2) * M(3,1);
+    det2_03_13 = M(0,1) * M(3,3) - M(0,3) * M(3,1);
+    det2_03_23 = M(0,2) * M(3,3) - M(0,3) * M(3,2);
+
+    det2_13_01 = M(1,0) * M(3,1) - M(1,1) * M(3,0);
+    det2_13_02 = M(1,0) * M(3,2) - M(1,2) * M(3,0);
+    det2_13_03 = M(1,0) * M(3,3) - M(1,3) * M(3,0);
+    det2_13_12 = M(1,1) * M(3,2) - M(1,2) * M(3,1);
+    det2_13_13 = M(1,1) * M(3,3) - M(1,3) * M(3,1);
+    det2_13_23 = M(1,2) * M(3,3) - M(1,3) * M(3,2);
+
+    det3_203_012 = M(2,0) * det2_03_12 - M(2,1) * det2_03_02 + M(2,2) * det2_03_01;
+    det3_203_013 = M(2,0) * det2_03_13 - M(2,1) * det2_03_03 + M(2,3) * det2_03_01;
+    det3_203_023 = M(2,0) * det2_03_23 - M(2,2) * det2_03_03 + M(2,3) * det2_03_02;
+    det3_203_123 = M(2,1) * det2_03_23 - M(2,2) * det2_03_13 + M(2,3) * det2_03_12;
+
+    det3_213_012 = M(2,0) * det2_13_12 - M(2,1) * det2_13_02 + M(2,2) * det2_13_01;
+    det3_213_013 = M(2,0) * det2_13_13 - M(2,1) * det2_13_03 + M(2,3) * det2_13_01;
+    det3_213_023 = M(2,0) * det2_13_23 - M(2,2) * det2_13_03 + M(2,3) * det2_13_02;
+    det3_213_123 = M(2,1) * det2_13_23 - M(2,2) * det2_13_13 + M(2,3) * det2_13_12;
+
+    det3_301_012 = M(3,0) * det2_01_12 - M(3,1) * det2_01_02 + M(3,2) * det2_01_01;
+    det3_301_013 = M(3,0) * det2_01_13 - M(3,1) * det2_01_03 + M(3,3) * det2_01_01;
+    det3_301_023 = M(3,0) * det2_01_23 - M(3,2) * det2_01_03 + M(3,3) * det2_01_02;
+    det3_301_123 = M(3,1) * det2_01_23 - M(3,2) * det2_01_13 + M(3,3) * det2_01_12;
+
+    M(0,0) = - det3_213_123 * inv_det;
+    M(1,0) = + det3_213_023 * inv_det;
+    M(2,0) = - det3_213_013 * inv_det;
+    M(3,0) = + det3_213_012 * inv_det;
+
+    M(0,1) = + det3_203_123 * inv_det;
+    M(1,1) = - det3_203_023 * inv_det;
+    M(2,1) = + det3_203_013 * inv_det;
+    M(3,1) = - det3_203_012 * inv_det;
+
+    M(0,2) = + det3_301_123 * inv_det;
+    M(1,2) = - det3_301_023 * inv_det;
+    M(2,2) = + det3_301_013 * inv_det;
+    M(3,2) = - det3_301_012 * inv_det;
+
+    M(0,3) = - det3_201_123 * inv_det;
+    M(1,3) = + det3_201_023 * inv_det;
+    M(2,3) = - det3_201_013 * inv_det;
+    M(3,3) = + det3_201_012 * inv_det;
+    #undef M
+    return 1;
+}
+
+MMX_API int
+xm4_inverse(float *r, const float *m)
+{
+    MMX_MEMCPY(r, m, sizeof(float) * 16);
+    return xm4_inverse_self(r);
+}
+
 MMX_API void
 xm4_translate(float *m, float x, float y, float z)
 {
@@ -976,6 +1342,22 @@ xm4_translate(float *m, float x, float y, float z)
     M(3,0) = x;
     M(3,1) = y;
     M(3,2) = z;
+    M(3,3) = 1.0f;
+    #undef M
+}
+
+MMX_API void
+xm4_orthographic(float *m, float left, float right, float bottom, float top,
+    float near, float far)
+{
+    #define M(col, row) m[(col<<2)+row]
+    xv_zero_array(m, 16);
+    M(0,0) = 2.0f/(right-left);
+    M(1,1) = 2.0f/(top-bottom);
+    M(2,2) = -2.0f/(far - near);
+    M(3,0) = -(right+left)/(right-left);
+    M(3,1) = -(top+bottom)/(top-bottom);
+    M(3,2) = -(far+near)/(far-near);
     M(3,3) = 1.0f;
     #undef M
 }
@@ -1006,6 +1388,22 @@ xm4_persp(float *m, float fov, float aspect, float near, float far)
     M(2,2) = -(far + near) / (far - near);
     M(2,3) = -1.0f;
     M(3,2) = -(2.0f * far * near) / (far - near);
+    #undef M
+}
+
+MMX_API void
+xm4_frustum(float *m, float left, float right, float buttom, float top,
+    float near, float far)
+{
+    #define M(col, row) m[(col<<2)+row]
+    xv_zero_array(m, 16);
+    M(0,0) = (2.0f * near) / (right -left);
+    M(1,1) = (2.0f * near) / (top - buttom);
+    M(2,0) = (right + left) / (right - left);
+    M(2,1) = (top + buttom) / (top - buttom);
+    M(2,2) = -(far + near) / (far - near);
+    M(2,3) = -1.0f;
+    M(3,2) = -(2.0f*far*near)/(far-near);
     #undef M
 }
 
