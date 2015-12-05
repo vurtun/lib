@@ -1841,10 +1841,7 @@ generate_implementation(FILE *out, struct meta *meta)
 int
 main(int argc, char **argv)
 {
-<<<<<<< HEAD
     int i = 0;
-=======
->>>>>>> 5e83da2d3d79e87d0b3cc227a7231e3c5064a7a2
     FILE *output;
     char *file;
     size_t size;
@@ -1855,7 +1852,6 @@ main(int argc, char **argv)
         die("usage: %s <files>\n", argv[0]);
 
     zero_struct(meta);
-<<<<<<< HEAD
     for (i = 0; i < (argc-1); ++i) {
         file = file_load(argv[1], &size);
         lxr_init(&lexer, file, size, 0, parser_log, 0);
@@ -1870,19 +1866,6 @@ main(int argc, char **argv)
             } else if (tok.type == LXR_TOKEN_EOS) break;;
         }
         free(file);
-=======
-    file = file_load(argv[1], &size);
-    lxr_init(&lexer, file, size, 0, parser_log, 0);
-    while (!lexer.error) {
-        struct lxr_token tok;
-        if (!lxr_read(&lexer, &tok))
-            break;
-
-        if (tok.type == LXR_TOKEN_NAME) {
-            if (!lxr_token_icmp(&tok, "introspect"))
-                parse_introspectable(&meta, &lexer);
-        } else if (tok.type == LXR_TOKEN_EOS) break;;
->>>>>>> 5e83da2d3d79e87d0b3cc227a7231e3c5064a7a2
     }
 
     output = fopen("meta.h", "w");
