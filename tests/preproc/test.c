@@ -31,6 +31,12 @@ introspect enum string_enum {
     PUNCT_PLUS as meta("+")
 };
 
+#define introspect_struct(x)
+introspect_struct(int id; const char *name;);
+introspect enum complex_enum {
+
+}
+
 introspect int
 function(int i, char c, long l)
 {

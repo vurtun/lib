@@ -1179,6 +1179,22 @@ lxr_peek_type(struct lxr_lexer *lexer, enum lxr_token_type type,
 }
 
 static int
+lxr_read_until(struct lxr_lexer *lexer, const char *string, struct lxr_token *token)
+{
+    int begin = 1;
+    struct lxr_token tok;
+    token->str = lexer->current;
+    while (lxr_read(lexer, &tok)) {
+        if (!lxr_token_cmp(&tok, string)) {
+            token->len = (size_t)(tok.str - token->str);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+static int
 lxr_skip_until(struct lxr_lexer *lexer, const char *string)
 {
     struct lxr_token tok;
@@ -1337,7 +1353,9 @@ zero_size(void *ptr, size_t size)
 }
 
 /* ---------------------------------------------------------------
+ *
  *                          PARSE
+ *
  * ---------------------------------------------------------------*/
 struct meta_type {
     int index;
@@ -1345,6 +1363,7 @@ struct meta_type {
 };
 
 struct meta_value {
+    int meta_id;
     char *name;
     int int_value;
     char *str_value;
@@ -1386,9 +1405,26 @@ struct meta_argument {
 
 struct meta_function {
     char *name;
+    const char *file;
+    int line;
     int visibility;
     int ret;
     struct meta_argument *args;
+};
+
+struct meta_slot {
+    int index;
+    char *id;
+    char *values;
+};
+
+struct meta_table {
+    int index;
+    char *name;
+    char *storage;
+    char *format;
+    int element_count;
+    struct meta_slot *slots;
 };
 
 struct meta {
@@ -1396,6 +1432,7 @@ struct meta {
     struct meta_struct *structs;
     struct meta_enum *enums;
     struct meta_function *functions;
+    struct meta_table *tables;
 };
 
 static void
@@ -1481,6 +1518,7 @@ parse_value(struct meta_enum *meta, struct lxr_lexer *lexer)
     struct meta_value value;
     struct lxr_token tok;
     if (!lxr_expect_type(lexer, LXR_TOKEN_NAME, 0, &tok)) return 0;
+    value.meta_id = 0;
     value.name = lxr_token_dup(&tok);
     if (lxr_check_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_ASSIGN, &tok)) {
         /* normal int enumerator */
@@ -1526,7 +1564,7 @@ parse_argument(struct meta *meta, struct meta_function *meta_fun, struct lxr_lex
 }
 
 static int
-parse_introspectable(struct meta *meta, struct lxr_lexer *lexer)
+parse_introspectable(struct meta *meta, struct lxr_lexer *lexer, const char *file)
 {
     struct lxr_token tok;
     if (!lxr_expect_any(lexer, &tok)) return 0;
@@ -1578,6 +1616,8 @@ parse_introspectable(struct meta *meta, struct lxr_lexer *lexer)
         meta_fun.ret = parse_add_type(meta, &tok);
         if (!lxr_expect_type(lexer, LXR_TOKEN_NAME, 0, &tok)) return 0;
         meta_fun.name = lxr_token_dup(&tok);
+        meta_fun.file = file;
+        meta_fun.line = (int)tok.line;
         if (!lxr_expect_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_PARENTHESE_OPEN, &tok)) return 0;
         while (1) {
             if (lxr_check_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_PARENTHESE_CLOSE, &tok))
@@ -1589,8 +1629,86 @@ parse_introspectable(struct meta *meta, struct lxr_lexer *lexer)
     return 1;
 }
 
+static int
+parse_slot(struct meta_table *db, struct lxr_lexer *lexer)
+{
+    size_t i = 0;
+    struct lxr_token tok;
+    struct meta_slot slot;
+
+    zero_struct(slot);
+    lxr_expect_string(lexer, "meta_slot");
+    if (!lxr_expect_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_PARENTHESE_OPEN, &tok)) return 0;
+    if (!lxr_expect_type(lexer, LXR_TOKEN_NAME, 0, &tok)) return 0;
+    slot.index = db->index++;
+    slot.id = lxr_token_dup(&tok);
+    if (!lxr_expect_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_COMMA, &tok)) return 0;
+    if (!lxr_read_until(lexer, ")", &tok)) return 0;
+    slot.values = lxr_token_dup(&tok);
+    for (i = 0; i < tok.len; ++i) {
+        if (slot.values[i] == ';')
+            slot.values[i] = ',';
+    }
+    if (!lxr_check_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_COMMA, &tok)) return 0;
+    ar_push(db->slots, slot);
+    return 1;
+}
+
+static int
+parse_table(struct meta *meta, struct lxr_lexer *lexer)
+{
+    size_t i = 0;
+    struct lxr_token tok;
+    struct meta_table db;
+
+    zero_struct(db);
+    if (!lxr_expect_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_PARENTHESE_OPEN, &tok)) return 0;
+    if (!lxr_expect_type(lexer, LXR_TOKEN_NAME, 0, &tok)) return 0;
+    db.storage = lxr_token_dup(&tok);
+    if (!lxr_expect_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_COMMA, &tok)) return 0;
+    if (!lxr_read_until(lexer, ")", &tok)) return 0;
+    db.format = lxr_token_dup(&tok);
+    for (i = 0; i < tok.len; ++i) {
+        if (tok.str[i] == ';')
+            db.element_count++;
+    }
+    db.element_count++;
+    if (!lxr_expect_type(lexer, LXR_TOKEN_NAME, 0, &tok)) return 0;
+    db.name = lxr_token_dup(&tok);
+
+    if (!lxr_expect_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_BRACE_OPEN, &tok)) return 0;
+    while (1) {
+        if (lxr_check_type(lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_BRACE_CLOSE, &tok))
+            break;
+        parse_slot(&db, lexer);
+    }
+    ar_push(meta->tables, db);
+    return 1;
+}
+
+static void
+parse_file(struct meta *meta, const char *file_data, size_t size, const char *file)
+{
+    struct lxr_lexer lexer;
+    lxr_init(&lexer, file_data, size, 0, parser_log, 0);
+    while (!lexer.error) {
+        struct lxr_token tok;
+        if (!lxr_read(&lexer, &tok))
+            break;
+
+        if (tok.type == LXR_TOKEN_NAME) {
+            if (!lxr_token_icmp(&tok, "meta_introspect"))
+                parse_introspectable(meta, &lexer, file);
+            else if (!lxr_token_icmp(&tok, "meta_table"))
+                parse_table(meta, &lexer);
+        } else if (tok.type == LXR_TOKEN_EOS) break;;
+    }
+}
+
 /* ---------------------------------------------------------------
+ *
  *                          GENERATE
+ *
  * ---------------------------------------------------------------*/
 static void
 generate_header(FILE *out, struct meta *meta)
@@ -1600,7 +1718,14 @@ generate_header(FILE *out, struct meta *meta)
     fprintf(out, "#define META_H_\n\n");
     fprintf(out, "#define as\n");
     fprintf(out, "#define meta(x)\n");
-    fprintf(out, "#define introspect\n\n");
+    fprintf(out, "#define meta_slot(n,x) n\n");
+    fprintf(out, "#define meta_introspect\n");
+    fprintf(out, "#define meta_table(n,x) enum\n\n");
+    fprintf(out, "#ifdef META_STATIC\n");
+    fprintf(out, "#define META_API static\n");
+    fprintf(out, "#else\n");
+    fprintf(out, "#define META_API extern\n");
+    fprintf(out, "#endif\n");
     fprintf(out, "enum meta_type {\n");
     for (i = 0; i < ar_count(meta->types); ++i)
         fprintf(out, "    META_TYPE_%s,\n", meta->types[i].name);
@@ -1631,6 +1756,7 @@ generate_header(FILE *out, struct meta *meta)
     fprintf(out, "};\n\n");
     fprintf(out, "struct meta_enum {\n");
     fprintf(out, "   const char *name;\n");
+    fprintf(out, "   int max_id;\n");
     fprintf(out, "   int value_count;\n");
     fprintf(out, "   const struct meta_enum_value *values;\n");
     fprintf(out, "};\n\n");
@@ -1644,18 +1770,56 @@ generate_header(FILE *out, struct meta *meta)
     fprintf(out, "};\n\n");
     fprintf(out, "struct meta_function {\n");
     fprintf(out, "   const char *name;\n");
+    fprintf(out, "   const char *file;\n");
+    fprintf(out, "   int line;\n");
     fprintf(out, "   enum meta_function_visbility visbility;\n");
-    fprintf(out, "   void *function;\n");
     fprintf(out, "   enum meta_type return_type;\n");
+    fprintf(out, "   void *function;\n");
     fprintf(out, "   int argc;\n");
     fprintf(out, "   const struct meta_argument *args;\n");
     fprintf(out, "};\n\n");
-    fprintf(out, "const struct meta_struct *meta_struct_from_name(const char*);\n");
-    fprintf(out, "const struct meta_member *meta_member_from_name(const char*, const char*);\n");
-    fprintf(out, "const struct meta_struct *meta_struct_from_id(enum meta_type);\n");
-    fprintf(out, "const struct meta_member *meta_member_from_id(enum meta_type, const char*);\n");
-    fprintf(out, "void *meta_member_ptr_from_name(void *obj, const char *type, const char *member);\n");
-    fprintf(out, "void *meta_member_ptr_from_id(void *obj, enum meta_type, const char *member);\n");
+    fprintf(out, "struct meta_table {\n");
+    fprintf(out, "   const char *name;\n");
+    fprintf(out, "   const char *type;\n");
+    fprintf(out, "   int slot_count;\n");
+    fprintf(out, "   const void *slots;\n");
+    fprintf(out, "};\n\n");
+    for (i = 0; i < ar_count(meta->tables); ++i) {
+        fprintf(out, "struct %s {\n", meta->tables[i].storage);
+        fprintf(out, "    int index;%s;\n", meta->tables[i].format);
+        fprintf(out, "};\n\n");
+    }
+
+    fprintf(out, "META_API const struct meta_struct *meta_struct_from_name(const char*);\n");
+    fprintf(out, "META_API const struct meta_member *meta_member_from_name(const char*, const char*);\n");
+    fprintf(out, "META_API const struct meta_struct *meta_struct_from_id(enum meta_type);\n");
+    fprintf(out, "META_API const struct meta_member *meta_member_from_id(enum meta_type, const char*);\n");
+    fprintf(out, "META_API const struct meta_enum *meta_enum_from_string(const char *enumerator);\n");
+    fprintf(out, "META_API void *meta_member_ptr_from_name(void *obj, const char *type, const char *member);\n");
+    fprintf(out, "META_API void *meta_member_ptr_from_id(void *obj, enum meta_type, const char *member);\n");
+    fprintf(out, "META_API int meta_enum_value_from_string(const char *enumerator, const char *id);\n\n");
+
+    fprintf(out, "#define meta_enum_str(x,v) meta_enum_values_of_##x[v].str_value\n");
+    fprintf(out, "#define meta_enum_name(x,v) meta_enum_values_of_##x[v].name\n");
+    fprintf(out, "#define meta_query(x,v) &meta_table_slots_of_##x[v]\n\n");
+
+    for (i = 0; i < ar_count(meta->structs); ++i)
+        fprintf(out, "META_API const struct meta_member meta_members_of_%s[%d];\n",
+            meta->structs[i].name, ar_count(meta->structs[i].members)+1);
+    for (i = 0; i < ar_count(meta->enums); ++i)
+        fprintf(out, "META_API const struct meta_enum_value meta_enum_values_of_%s[%d];\n",
+            meta->enums[i].name, ar_count(meta->enums[i].values)+1);
+    for (i = 0; i < ar_count(meta->functions); ++i)
+        fprintf(out, "META_API const struct meta_argument meta_function_args_of_%s[%d];\n",
+            meta->functions[i].name, ar_count(meta->functions[i].args)+1);
+    for (i = 0; i < ar_count(meta->tables); ++i)
+        fprintf(out, "META_API const struct %s meta_table_slots_of_%s[%d];\n",
+            meta->tables[i].storage, meta->tables[i].name, ar_count(meta->tables[i].slots));
+    fprintf(out, "META_API const struct meta_struct meta_structs[%d];\n", ar_count(meta->structs)+1);
+    fprintf(out, "META_API const struct meta_enum meta_enums[%d];\n", ar_count(meta->enums)+1);
+    fprintf(out, "META_API const struct meta_function meta_functions[%d];\n", ar_count(meta->functions)+1);
+    fprintf(out, "META_API const struct meta_table meta_tables[%d];\n", ar_count(meta->tables)+1);
+
     fprintf(out, "#endif\n\n");
 }
 
@@ -1703,6 +1867,16 @@ generate_meta_function_args(FILE *out, struct meta_function *meta, struct meta_t
 }
 
 static void
+generate_meta_table_slots(FILE *out, struct meta_table *meta)
+{
+    int i = 0;
+    for (i = 0; i < ar_count(meta->slots); ++i)
+        fprintf(out, "    {%s, %s},\n",
+            meta->slots[i].id, meta->slots[i].values);
+}
+
+
+static void
 generate_meta_data(FILE *out, struct meta *meta)
 {
     int i = 0;
@@ -1730,6 +1904,14 @@ generate_meta_data(FILE *out, struct meta *meta)
     }
     fprintf(out, "\n");
 
+    for (i = 0; i < ar_count(meta->tables); ++i) {
+        fprintf(out, "const struct %s meta_table_slots_of_%s[] = {\n",
+            meta->tables[i].storage, meta->tables[i].name);
+        generate_meta_table_slots(out, &meta->tables[i]);
+        fprintf(out, "};\n");
+    }
+    fprintf(out, "\n");
+
     fprintf(out, "const struct meta_struct meta_structs[] = {\n");
     for (i = 0; i < ar_count(meta->structs); ++i) {
         fprintf(out, "    {META_TYPE_%s, \"%s\", sizeof(struct %s), %d, &meta_members_of_%s[0]},\n",
@@ -1741,23 +1923,36 @@ generate_meta_data(FILE *out, struct meta *meta)
 
     fprintf(out, "const struct meta_enum meta_enums[] = {\n");
     for (i = 0; i < ar_count(meta->enums); ++i) {
-        fprintf(out, "    {\"%s\", %d, &meta_enum_values_of_%s[0]},\n",
-            meta->enums[i].name, ar_count(meta->enums[i].values), meta->enums[i].name);
+        fprintf(out, "    {\"%s\", %d, %d, &meta_enum_values_of_%s[0]},\n",
+            meta->enums[i].name, meta->enums[i].index, ar_count(meta->enums[i].values), meta->enums[i].name);
     }
-    fprintf(out, "    {0,0,0}\n");
+    fprintf(out, "    {0,0,0,0}\n");
     fprintf(out, "};\n\n");
 
     fprintf(out, "const struct meta_function meta_functions[] = {\n");
     for (i = 0; i < ar_count(meta->functions); ++i) {
         fprintf(out, "    {\"%s\", ", meta->functions[i].name);
-        fprintf(out, "%s, ", meta->functions[i].visibility == META_FUNCTION_STATIC? "META_FUNCTION_STATIC": "META_FUNCTION_EXTERN");
-        fprintf(out, "%s, ", meta->functions[i].name);
+        fprintf(out, "\"%s\", ", meta->functions[i].file);
+        fprintf(out, "%d, ", meta->functions[i].line);
+        fprintf(out, "META_FUNCTION_%s, ",
+            (meta->functions[i].visibility == META_FUNCTION_STATIC)? "STATIC": "EXTERN");
         fprintf(out, "META_TYPE_%s, ", meta->types[meta->functions[i].ret].name);
+        fprintf(out, "%s, ", meta->functions[i].name);
         fprintf(out, "%d, ", ar_count(meta->functions[i].args));
         fprintf(out, "&meta_function_args_of_%s[0]},\n", meta->functions[i].name);
     }
-    fprintf(out, "    {0,0,0,0,0}\n");
+    fprintf(out, "    {0,0,0,0,0,0,0}\n");
     fprintf(out, "};\n\n");
+
+    fprintf(out, "const struct meta_table meta_tables[] = {\n");
+    for (i = 0; i < ar_count(meta->tables); ++i) {
+        fprintf(out, "    {\"%s\", \"%s\", %d, &meta_table_slots_of_%s[0]},\n",
+            meta->tables[i].name, meta->tables[i].storage,
+            ar_count(meta->tables[i].slots), meta->tables[i].name);
+    }
+    fprintf(out, "    {0,0,0}\n");
+    fprintf(out, "};\n\n");
+
 }
 
 static void
@@ -1826,6 +2021,29 @@ generate_meta_functions(FILE *out)
     fprintf(out, "    const struct meta_member *member = meta_member_from_id(type, id);\n");
     fprintf(out, "    if (!member) return 0;\n");
     fprintf(out, "    return (unsigned char*)obj + member->offset;\n");
+    fprintf(out, "}\n");
+    fprintf(out, "META_API const struct meta_enum *meta_enum_from_string(const char *enumerator)\n");
+    fprintf(out, "{\n");
+    fprintf(out, "    const struct meta_enum *iter = &meta_enums[0];\n");
+    fprintf(out, "    while (iter->name) {\n");
+    fprintf(out, "        if (!strcmp(iter->name, enumerator))\n");
+    fprintf(out, "            return iter;\n");
+    fprintf(out, "        iter++;\n");
+    fprintf(out, "    }\n");
+    fprintf(out, "    return 0;\n");
+    fprintf(out, "}\n");
+    fprintf(out, "META_API int meta_enum_value_from_string(const char *enums, const char *id)\n\n");
+    fprintf(out, "{\n");
+    fprintf(out, "    const struct meta_enum_value *iter;\n");
+    fprintf(out, "    const struct meta_enum *e = meta_enum_from_string(enums);\n");
+    fprintf(out, "    if (!e) return -1;\n");
+    fprintf(out, "    iter = e->values;\n");
+    fprintf(out, "    while (iter->name) {\n");
+    fprintf(out, "        if (!strcmp(iter->name, id))\n");
+    fprintf(out, "            return iter->id;\n");
+    fprintf(out, "        iter++;\n");
+    fprintf(out, "    }\n");
+    fprintf(out, "    return -1;\n");
     fprintf(out, "}\n\n");
 }
 
@@ -1838,6 +2056,12 @@ generate_implementation(FILE *out, struct meta *meta)
     fprintf(out, "#endif\n\n");
 }
 
+static void generate_output(FILE *out, struct meta *meta)
+{
+    generate_header(out, meta);
+    generate_implementation(out, meta);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1845,33 +2069,21 @@ main(int argc, char **argv)
     FILE *output;
     char *file;
     size_t size;
-    struct lxr_lexer lexer;
     struct meta meta;
     const char *out = 0;
     if (argc < 2)
         die("usage: %s <files>\n", argv[0]);
 
     zero_struct(meta);
-    for (i = 0; i < (argc-1); ++i) {
-        file = file_load(argv[1], &size);
-        lxr_init(&lexer, file, size, 0, parser_log, 0);
-        while (!lexer.error) {
-            struct lxr_token tok;
-            if (!lxr_read(&lexer, &tok))
-                break;
-
-            if (tok.type == LXR_TOKEN_NAME) {
-                if (!lxr_token_icmp(&tok, "introspect"))
-                    parse_introspectable(&meta, &lexer);
-            } else if (tok.type == LXR_TOKEN_EOS) break;;
-        }
+    for (i = 1; i < argc; ++i) {
+        file = file_load(argv[i], &size);
+        parse_file(&meta, file, size, argv[i]);
         free(file);
     }
 
     output = fopen("meta.h", "w");
     if (!output) die("failed to open the output file\n");
-    generate_header(output, &meta);
-    generate_implementation(output, &meta);
+    generate_output(output, &meta);
     fclose(output);
     return 0;
 }
