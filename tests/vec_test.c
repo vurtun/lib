@@ -297,6 +297,13 @@ static int test_vector(void)
         xv_lerp(xv(c), xv(a), 0.5f, xv(b), 3);
         xv_test_vec3(c, 2.0f, 2.0f, 2.0f);
     }
+    xv_test_section("xv_len")
+    {
+        a = XV3(5.0f, 1.0f, 2.0f);
+        b = XV3(1.0f, 8.0f, 3.0f);
+        xv_cross(xv(c), xv(a), xv(b), 3);
+        xv_test_vec3(c, -13.0f, -13.0f, 39.0f);
+    }
     xv_test_result();
     return fail_count;
 }

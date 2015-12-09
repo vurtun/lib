@@ -355,6 +355,11 @@ MMX_API void xm3_from_mat4(float *r, const float *m);
 MMX_API void xm4_identity(float *m);
 MMX_API void xm4_transpose(float *m);
 MMX_API void xm4_translate(float *m, float x, float y, float z);
+MMX_API void xm4_rotate(float *m, float angle, float X, float Y, float Z);
+MMX_API void xm4_rotate_x(float *m, float angle);
+MMX_API void xm4_rotate_y(float *m, float angle);
+MMX_API void xm4_rotate_z(float *m, float angle);
+MMX_API void xm4_rotate_axis(float *m, int axis, float angle);
 MMX_API void xm4_mul(float *product, const float *a, const float *b);
 MMX_API float xm4_determinant(const float *m);
 MMX_API int xm4_inverse_self(float *m);
@@ -1025,31 +1030,22 @@ xm3_rotate_axis(float *m, int axis, float angle)
 MMX_API void
 xm3_rotate(float *m, float angle, float X, float Y, float Z)
 {
-    float tmp1, tmp2;
     #define M(col, row) m[(col*3)+row]
-    float c = (float)MMX_DEG2RAD(angle);
-    float s = (float)MMX_DEG2RAD(angle);
-    float t = 1.0f - c;
+    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+    float ci = 1.0f - c;
+    float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
 
-    xv_zero_array(m, 16);
-    M(0,0) = c + X * X * t;
-    M(1,1) = c + Y * Y * t;
-    M(2,2) = c + Z * Z * t;
+    M(0,0) = X*X + (1.0f-X*X)*c;
+    M(0,1) = X*Y*ci - Z*s;
+    M(0,2) = X*Z*ci + Y*s;
 
-    tmp1 = X * Y * t;
-    tmp2 = Z * s;
-    M(1,0) = tmp1 + tmp2;
-    M(0,1) = tmp1 - tmp2;
+    M(1,0) = X*Y*ci + Z*s;
+    M(1,1) = Y*Y+(1.0f-Y*Y)*c;
+    M(1,2) = Y*Z*ci -X*s;
 
-    tmp1 = X * Z * t;
-    tmp2 = Y * s;
-    M(2,0) = tmp1 - tmp2;
-    M(0,2) = tmp2 + tmp2;
-
-    tmp1 = Y * Z *t;
-    tmp2 = X * s;
-    M(2,1) = tmp1 + tmp2;
-    M(1,2) = tmp1 - tmp2;
+    M(2,0) = X*Z*ci - Y*s;
+    M(2,1) = Y*Z*ci + X*s;
+    M(2,2) = Z*Z+(1.0f - Z*Z)*c;
     #undef M
 }
 
@@ -1394,6 +1390,46 @@ xm4_translate(float *m, float x, float y, float z)
     M(3,2) = z;
     M(3,3) = 1.0f;
     #undef M
+}
+
+MMX_API void
+xm4_rotate(float *m, float angle, float X, float Y, float Z)
+{
+    float t[9];
+    xm3_rotate(t, angle, X, Y, Z);
+    xm4_from_mat3(m, t);
+}
+
+MMX_API void
+xm4_rotate_x(float *m, float angle)
+{
+    float t[9];
+    xm3_rotate_x(t, angle);
+    xm4_from_mat3(m, t);
+}
+
+MMX_API void
+xm4_rotate_y(float *m, float angle)
+{
+    float t[9];
+    xm3_rotate_y(t, angle);
+    xm4_from_mat3(m, t);
+}
+
+MMX_API void
+xm4_rotate_z(float *m, float angle)
+{
+    float t[9];
+    xm3_rotate_z(t, angle);
+    xm4_from_mat3(m, t);
+}
+
+MMX_API void
+xm4_rotate_axis(float *m, int axis, float angle)
+{
+    float t[9];
+    xm3_rotate_axis(t, axis, angle);
+    xm4_from_mat3(m, t);
 }
 
 MMX_API void
