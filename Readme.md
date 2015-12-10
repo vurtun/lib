@@ -8,11 +8,11 @@ My single header libraries for C/C++.
 |**mm_json.h** | 1.00 | parser | 852 | zlib | JSON-Parser
 |**mm_lexer.h** | 1.00 | parser | 1159 | zlib | simple lexer for C-like languages
 |**mm_sched.h** | 1.00 | multithreading | 696 | zlib | multithreaded task scheduler
-|**mm_vec.h** | 1.01 | math | 2089 | zlib | vector math
+|**mm_vec.h** | 0.02 | math | 2137 | zlib | vector math
 |**mm_web.h** | 1.00 | network | 1455 | BSD |  lightweight webserver
 
 Total libraries: 5  
-Total lines of C code: 6251
+Total lines of C code: 6299
 
 ##FAQ
 ---
