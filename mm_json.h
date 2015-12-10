@@ -139,17 +139,17 @@ EXAMPLES:*/
     /* query string */
     char buffer[64];
     mmj_size size;
-    mmj_query_string(buffer, 64, &size, toks, num, "map.entity[4].position");
+    mmj_query_string(buffer, 64, &size, toks, num, "map.entity[4].name");
     mmj_query_string_del(buffer, 64, &size, toks, num, "map%entity[9]%name", '%');
 
     /* query number */
     mmj_number num;
-    mmj_query_number(&num, toks, num, "map.solider[2].position.x");
-    mmj_query_number_del(&num, toks, num, "map/solider[2]/position.x", "/");
+    mmj_query_number(&num, toks, num, "map.soldier[2].position.x");
+    mmj_query_number_del(&num, toks, num, "map/soldier[2]/position.x", "/");
 
     /* query type */
-    mmj_int typ0 = mmj_query_number(toks, num, "map.solider[2]);
-    mmj_int typ1 = mmj_query_number_del(toks, num, "map_solider[2], '_');
+    mmj_int type0 = mmj_query_number(toks, num, "map.soldier[2]);
+    mmj_int type1 = mmj_query_number_del(toks, num, "map_soldier[2], '_');
 
     /* subqueries */
     json_token *entity = mmj_query(toks, num, "map.entity[4]");
