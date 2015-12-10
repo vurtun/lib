@@ -626,7 +626,7 @@ test_matrix4(void)
 
     xv_test_section("xm4_translate")
     {
-        xm4_translate(xm(r), 3.0f, 2.0f, 4.0f);
+        xm4_translatev(xm(r), 3.0f, 2.0f, 4.0f);
 
         xv_test_assert(r.m[0][0] == 1.0f);
         xv_test_assert(r.m[0][1] == 0.0f);

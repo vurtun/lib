@@ -36,11 +36,11 @@ DEFINES:
         and validate them at compile time. If they are incorrect, you will
         get compile errors and will need to define them yourself.
 
-    MMS_MEMSET
+    MMX_MEMSET
         You can define this to 'memset' or your own memset replacement.
         If not, mm_sched.h uses a naive (maybe inefficent) implementation.
 
-    MMS_MEMCPY
+    MMX_MEMCPY
         You can define this to 'memcpy' or your own memset replacement.
         If not, mm_sched.h uses a naive (maybe inefficent) implementation.
 
@@ -253,7 +253,7 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_norm(o, q, dim)do{\
     float len_i_ = xv_len2(q,dim);\
     if(len_i_ > 0.00001f){\
-        len_i_ = MMX_SQRT(len_i_);\
+        len_i_ = (float)MMX_SQRT(len_i_);\
         len_i_ = 1.0f/len_i_;\
         xv_muli(o, q, len_i_, dim);\
     }}while(0)
@@ -335,58 +335,61 @@ MMX_API float xm2_determinant(const float *m);
 MMX_API int xm2_inverse_self(float *m);
 MMX_API int xm2_inverse(float *r, const float *m);
 
-MMX_API void xm3_identity(float *m);
-MMX_API void xm3_transpose(float *m);
-MMX_API void xm3_mul(float *product, const float *a, const float *b);
-MMX_API void xm3_scale(float *m, float x, float y, float z);
-MMX_API void xm3_transform(float *r, const float *m, const float *v);
-MMX_API void xm3_rotate(float *m, float angle, float X, float Y, float Z);
-MMX_API void xm3_rotate_x(float *m, float angle);
-MMX_API void xm3_rotate_y(float *m, float angle);
-MMX_API void xm3_rotate_z(float *m, float angle);
-MMX_API void xm3_rotate_axis(float *m, int axis, float angle);
-MMX_API void xm3_rotate_align(float *m, const float *dest, const float *src);
+MMX_API void xm3_identity(float *out);
+MMX_API void xm3_transpose(float *out);
+MMX_API void xm3_mul(float *out, const float *a, const float *b);
+MMX_API void xm3_scale(float *out, float x, float y, float z);
+MMX_API void xm3_transform(float *out, const float *m, const float *v);
+MMX_API void xm3_rotate(float *out, float angle, float X, float Y, float Z);
+MMX_API void xm3_rotate_x(float *out, float angle);
+MMX_API void xm3_rotate_y(float *out, float angle);
+MMX_API void xm3_rotate_z(float *out, float angle);
+MMX_API void xm3_rotate_axis(float *out, int axis, float angle);
+MMX_API void xm3_rotate_align(float *out, const float *dest, const float *src);
+MMX_API void xm3_rotate_vector(float *out, const float *in, float angle, float X, float Y, float Z);
 MMX_API float xm3_determinant(const float *m);
-MMX_API int xm3_inverse_self(float *m);
-MMX_API int xm3_inverse(float *r, const float *m);
-MMX_API void xm3_from_quat(float *m, const float *q);
-MMX_API void xm3_from_mat4(float *r, const float *m);
+MMX_API int xm3_inverse_self(float *self);
+MMX_API int xm3_inverse(float *out, const float *in);
+MMX_API void xm3_from_quat(float *out, const float *quat_input);
+MMX_API void xm3_from_mat4(float *out, const float *mat3_input);
 
-MMX_API void xm4_identity(float *m);
-MMX_API void xm4_transpose(float *m);
-MMX_API void xm4_translate(float *m, float x, float y, float z);
-MMX_API void xm4_rotate(float *m, float angle, float X, float Y, float Z);
-MMX_API void xm4_rotate_x(float *m, float angle);
-MMX_API void xm4_rotate_y(float *m, float angle);
-MMX_API void xm4_rotate_z(float *m, float angle);
-MMX_API void xm4_rotate_axis(float *m, int axis, float angle);
-MMX_API void xm4_mul(float *product, const float *a, const float *b);
+MMX_API void xm4_identity(float *self);
+MMX_API void xm4_transpose(float *self);
+MMX_API void xm4_translate(float *out, const float *d);
+MMX_API void xm4_translatev(float *out, float x, float y, float z);
+MMX_API void xm4_rotate(float *out, float angle, const float *axis);
+MMX_API void xm4_rotatef(float *out, float angle, float X, float Y, float Z);
+MMX_API void xm4_rotate_x(float *out, float angle);
+MMX_API void xm4_rotate_y(float *out, float angle);
+MMX_API void xm4_rotate_z(float *out, float angle);
+MMX_API void xm4_rotate_axis(float *out, int axis, float angle);
+MMX_API void xm4_mul(float *out, const float *a, const float *b);
 MMX_API float xm4_determinant(const float *m);
-MMX_API int xm4_inverse_self(float *m);
-MMX_API int xm4_inverse(float *r, const float *m);
-MMX_API void xm4_transform(float *r, const float *m, const float *v);
-MMX_API void xm4_ortho(float *m, float left, float right, float bottom, float top);
-MMX_API void xm4_orthographic(float *m, float left, float right, float bottom, float top, float near, float far);
-MMX_API void xm4_frustum(float *m, float left, float right, float buttom, float top, float near, float far);
-MMX_API void xm4_persp(float *m, float fov, float aspect, float near, float far);
-MMX_API void xm4_lookat(float *m, const float *eye, const float *center, const float *up);
-MMX_API void xm4_from_quat(float *m, const float *q);
-MMX_API void xm4_from_quat_vec(float *m, const float *q, const float *p);
-MMX_API void xm4_from_mat3(float *r, const float *m);
+MMX_API int xm4_inverse_self(float *self);
+MMX_API int xm4_inverse(float *out, const float *in);
+MMX_API void xm4_transform(float *out, const float *matrix, const float *in);
+MMX_API void xm4_ortho(float *out, float left, float right, float bottom, float top);
+MMX_API void xm4_orthographic(float *out, float left, float right, float bottom, float top, float near, float far);
+MMX_API void xm4_frustum(float *out, float left, float right, float buttom, float top, float near, float far);
+MMX_API void xm4_persp(float *out, float fov, float aspect, float near, float far);
+MMX_API void xm4_lookat(float *out, const float *eye, const float *center, const float *up);
+MMX_API void xm4_from_quat(float *out, const float *quat_input);
+MMX_API void xm4_from_quat_vec(float *out, const float *quat_input, const float *position);
+MMX_API void xm4_from_mat3(float *out, const float *matrix3);
 
 /* ---------------------------------------------------------------
  *                          QUATERNION
  * ---------------------------------------------------------------*/
 #define xq(q) ((float*)&(q))
-MMX_API void xq_from_mat3(float *q, const float *m);
-MMX_API void xq_rotation(float *q, float angle, float x, float y, float z);
+MMX_API void xq_from_mat3(float *quat, const float *mat3);
+MMX_API void xq_rotation(float *quat, float angle, float x, float y, float z);
 MMX_API void xq_transform(float *out, const float *q, const float *v);
-MMX_API void xq_mul(float *r, const float *a, const float *b);
-MMX_API void xq_integrate2D(float *r, const float *q, float *omega, float delta);
-MMX_API void xq_integrate3D(float *r, const float *q, float *omega, float delta);
-MMX_API float xq_invert(float*, const float*);
-MMX_API float xq_inverteq(float*);
-MMX_API float xq_get_rotation(float *axis, const float *q);
+MMX_API void xq_mul(float *out, const float *a, const float *b);
+MMX_API void xq_integrate2D(float *out, const float *q, float *omega, float delta);
+MMX_API void xq_integrate3D(float *out, const float *q, float *omega, float delta);
+MMX_API float xq_invert(float *out, const float *in);
+MMX_API float xq_inverteq(float *self);
+MMX_API float xq_get_rotation(float *axis_output, const float *quat);
 #define xq_identity(q) (q)[0] = (q)[1] = (q)[2] = 0, (q)[3] = 1.0f
 #define xq_conjugate(t,f) ((t)[0] = -(f)[0],(t)[1] = -(f)[1],(t)[2] = -(f)[2], (t)[3] = (f)[3])
 #define xq_norm(o, q) xv_norm(o, q, 4)
@@ -456,18 +459,18 @@ MMX_API void xc_reciprocal(float *r, const float *c);
 
 /* plane = a * x + b * y + c * z + d = 0 */
 #define xp(p) ((float*)&(p))
-MMX_API void xp_make(float *p, const float *normal, float distance);
-MMX_API int xp_from_points(float *p, const float *p1, const float *p2, const float *p3);
-MMX_API int xp_from_vec(float *r, const float *v1, const float *v2, const float *p);
-MMX_API void xp_translate(float *r, const float *plane, const float *translation);
-MMX_API void xp_translateq(float *r, const float *translation);
-MMX_API void xp_rotate(float *r, const float *plane, const float *origin, const float *m33);
-MMX_API void xp_rotate_self(float *r, const float *orgin, const float *m33);
-MMX_API float xp_norm(float *r, const float *p);
-MMX_API float xp_norm_self(float *r);
-MMX_API float xp_distance(const float *p, const float *v3);
-MMX_API int xp_side(const float *p, const float *v3, float epsilon);
-MMX_API int xp_intersect_line(const float *p, const float *start, const float *end);
+MMX_API void xp_make(float *plane, const float *normal, float distance);
+MMX_API int xp_from_points(float *plane, const float *pnt1, const float *pnt2, const float *pnt3);
+MMX_API int xp_from_vec(float *plane, const float *v1, const float *v2, const float *pos);
+MMX_API void xp_translate(float *out, const float *plane, const float *translation);
+MMX_API void xp_translateq(float *plane, const float *translation);
+MMX_API void xp_rotate(float *out, const float *plane, const float *origin, const float *m33);
+MMX_API void xp_rotate_self(float *plane, const float *orgin, const float *m33);
+MMX_API float xp_norm(float *plane, const float *p);
+MMX_API float xp_norm_self(float *self);
+MMX_API float xp_distance(const float *plane, const float *v3);
+MMX_API int xp_side(const float *plane, const float *v3, float epsilon);
+MMX_API int xp_intersect_line(const float *plane, const float *line_start, const float *line_end);
 MMX_API int xp_intersect_ray(float *scale, const float *p, const float *start, const float *dir);
 MMX_API int xp_intersect_plane(float *start, float *dir, const float *p0, const float *p1);
 
@@ -476,19 +479,19 @@ MMX_API int xp_intersect_plane(float *start, float *dir, const float *p0, const 
  * ---------------------------------------------------------------*/
 /* sphere = {origin:(x,y,z),radius}*/
 #define xs(p) ((float*)&(p))
-MMX_API void xs_make(float *s, const float *origin, float radius);
-MMX_API int xs_add_point(float *s, const float *point);
-MMX_API int xs_add_sphere(float *s, const float *sphere);
-MMX_API void xs_expand(float *r, const float *s, float d);
-MMX_API void xs_expand_self(float *s, float d);
-MMX_API void xs_translate(float *r, const float *s, const float *t);
-MMX_API void xs_translate_self(float *r, const float *t);
-MMX_API float xs_plane_distance(const float *s, const float *p);
-MMX_API int xs_plane_side(const float *s, const float *p, float epsilon);
-MMX_API int xs_contains_point(const float *s, const float *p);
-MMX_API int xs_intersects_line(const float *s2, const float *start, const float *end);
+MMX_API void xs_make(float *sphere, const float *origin, float radius);
+MMX_API int xs_add_point(float *sphere, const float *point);
+MMX_API int xs_add_sphere(float *self, const float *sphere);
+MMX_API void xs_expand(float *out, const float *in, float d);
+MMX_API void xs_expand_self(float *self, float d);
+MMX_API void xs_translate(float *out, const float *in, const float *translation);
+MMX_API void xs_translate_self(float *self, const float *translation);
+MMX_API float xs_plane_distance(const float *sphere, const float *point);
+MMX_API int xs_plane_side(const float *sphere, const float *plane, float epsilon);
+MMX_API int xs_contains_point(const float *sphere, const float *point);
+MMX_API int xs_intersects_line(const float *sphere, const float *start, const float *end);
 MMX_API int xs_intersects_ray(float *scale0, float *scale1, const float *sphere, const float *start, const float *dir);
-MMX_API int xs_intersects_sphere(const float *s2, const float *s1);
+MMX_API int xs_intersects_sphere(const float *a, const float *b);
 MMX_API void xs_from_box(float *sphere, const float *box);
 
 /* ---------------------------------------------------------------
@@ -497,25 +500,25 @@ MMX_API void xs_from_box(float *sphere, const float *box);
 /* Axis Aligned Bounding Box */
 /* box = {min(x,y,z)},max(x,y,z)}*/
 #define xb(p) ((float*)&(p))
-MMX_API void xb_make(float *b, const float *min, const float *max);
-MMX_API void xb_from_points(float *b, const void *verts, int num, int stride, int offset);
-MMX_API int xb_add_point(float *b, const float *point);
-MMX_API int xb_add_box(float *b, const float *box);
+MMX_API void xb_make(float *box, const float *min, const float *max);
+MMX_API void xb_from_points(float *box, const void *verts, int num, int stride, int offset);
+MMX_API int xb_add_point(float *box, const float *point);
+MMX_API int xb_add_box(float *self, const float *box);
 MMX_API void xb_center(float *center, const float *box);
 MMX_API void xb_radius(float *radius, const float *box);
-MMX_API void xb_expand(float *r, const float *b, float d);
-MMX_API void xb_expand_self(float *b, float d);
-MMX_API void xb_transform(float *r, const float *box, const float *origin, const float *mat33);
-MMX_API void xb_translate(float *r, const float *b, const float *t);
-MMX_API void xb_translate_self(float *r, const float *t);
-MMX_API void xb_rotate(float *r, const float *b, const float *mat33);
-MMX_API void xb_rotate_self(float *r, const float *mat33);
-MMX_API void xb_intersection(float *r, const float *a, const float *b);
-MMX_API void xb_intersection_self(float *r, const float *b);
-MMX_API float xb_plane_distance(const float *s, const float *p);
-MMX_API int xb_plane_side(const float *s, const float *p, float epsilon);
-MMX_API int xb_contains_point(const float *s, const float *p);
-MMX_API int xb_intersects_line(const float *s2, const float *start, const float *end);
+MMX_API void xb_expand(float *out, const float *in, float d);
+MMX_API void xb_expand_self(float *self, float d);
+MMX_API void xb_transform(float *out, const float *in, const float *origin, const float *mat33);
+MMX_API void xb_translate(float *out, const float *in, const float *t);
+MMX_API void xb_translate_self(float *self, const float *t);
+MMX_API void xb_rotate(float *out, const float *in, const float *mat33);
+MMX_API void xb_rotate_self(float *self, const float *mat33);
+MMX_API void xb_intersection(float *out, const float *a, const float *b);
+MMX_API void xb_intersection_self(float *self, const float *box);
+MMX_API float xb_plane_distance(const float *box, const float *plane);
+MMX_API int xb_plane_side(const float *sphere, const float *plane, float epsilon);
+MMX_API int xb_contains_point(const float *box, const float *plane);
+MMX_API int xb_intersects_line(const float *box, const float *start, const float *end);
 MMX_API int xb_intersects_ray(float *scale, const float *box, const float *start, const float *dir);
 MMX_API int xb_intersects_box(const float *a, const float *b);
 
@@ -1073,6 +1076,14 @@ xm3_rotate_align(float *m, const float *d, const float *z)
 }
 
 MMX_API void
+xm3_rotate_vector(float *out, const float *in, float angle, float X, float Y, float Z)
+{
+    float m[9];
+    xm3_rotate(m, angle, X, Y, Z);
+    xm3_transform(out, m, in);
+}
+
+MMX_API void
 xm3_scale(float *m, float x, float y, float z)
 {
     #define M(col, row) m[(col*3)+row]
@@ -1086,9 +1097,9 @@ xm3_scale(float *m, float x, float y, float z)
 MMX_API void
 xm3_transform(float *r, const float *m, const float *v)
 {
-    #define X(a) a[0]
-    #define Y(a) a[1]
-    #define Z(a) a[2]
+    #define X(a) (a)[0]
+    #define Y(a) (a)[1]
+    #define Z(a) (a)[2]
     #define M(col, row) m[(col*3)+row]
     X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v);
     Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v);
@@ -1102,9 +1113,9 @@ xm3_transform(float *r, const float *m, const float *v)
 MMX_API void
 xm3_mul(float *product, const float *a, const float *b)
 {
-    #define A(col, row) a[(col*3)+row]
-    #define B(col, row) b[(col*3)+row]
-    #define P(col, row) product[(col*3)+row]
+    #define A(col, row) (a)[(col*3)+row]
+    #define B(col, row) (b)[(col*3)+row]
+    #define P(col, row) (product)[(col*3)+row]
     int i;
     for (i = 0; i < 3; ++i) {
         const float ai0 = A(i,0), ai1 = A(i,1), ai2 = A(i,2);
@@ -1378,7 +1389,11 @@ xm4_inverse(float *r, const float *m)
 }
 
 MMX_API void
-xm4_translate(float *m, float x, float y, float z)
+xm4_translate(float *m, const float *d)
+{xm4_translatev(m, d[0], d[1], d[2]);}
+
+MMX_API void
+xm4_translatev(float *m, float x, float y, float z)
 {
     #define M(col, row) m[(col<<2)+row]
     xv_zero_array(m, 16);
@@ -1392,8 +1407,13 @@ xm4_translate(float *m, float x, float y, float z)
     #undef M
 }
 
+
 MMX_API void
-xm4_rotate(float *m, float angle, float X, float Y, float Z)
+xm4_rotate(float *out, float angle, const float *axis)
+{xm4_rotatef(out, angle, axis[0], axis[1], axis[2]);}
+
+MMX_API void
+xm4_rotatef(float *m, float angle, float X, float Y, float Z)
 {
     float t[9];
     xm3_rotate(t, angle, X, Y, Z);
