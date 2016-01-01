@@ -52,7 +52,7 @@ CONCEPT:
     to call `mmj_init` once before using.
 
 LICENSE: (zlib)
-    Copyright (c) 2015 Micha Mettke
+    Copyright (c) 2016 Micha Mettke
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages

@@ -22,7 +22,7 @@ QUICK:
     #define MML_ASSERT before including this file
 
 LICENSE: (zlib)
-    Copyright (c) 2015 Micha Mettke
+    Copyright (c) 2016 Micha Mettke
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages

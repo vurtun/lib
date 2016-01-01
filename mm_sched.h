@@ -57,7 +57,7 @@ DEFINE:
 
 
 LICENSE: (zlib)
-    Copyright (c) 2015 Doug Binks, Micha Mettke
+    Copyright (c) 2016 Doug Binks, Micha Mettke
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
