@@ -32,17 +32,17 @@ DEFINES:
     MMX_UINT32
     MMX_UINT_PTR
         If your compiler is C99 you do not need to define this.
-        Otherwise, mm_sched will try default assignments for them
+        Otherwise, mm_vec will try default assignments for them
         and validate them at compile time. If they are incorrect, you will
         get compile errors and will need to define them yourself.
 
     MMX_MEMSET
         You can define this to 'memset' or your own memset replacement.
-        If not, mm_sched.h uses a naive (maybe inefficent) implementation.
+        If not, mm_vec.h uses a naive (maybe inefficent) implementation.
 
     MMX_MEMCPY
         You can define this to 'memcpy' or your own memset replacement.
-        If not, mm_sched.h uses a naive (maybe inefficent) implementation.
+        If not, mm_vec.h uses a naive (maybe inefficent) implementation.
 
     MMX_SIN
     MMX_FABS
@@ -56,7 +56,7 @@ DEFINES:
 
 
 LICENSE: (zlib)
-    Copyright (c) 2016 Micha Mettke
+    Copyright (c) 2015 Micha Mettke
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -155,6 +155,19 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_applys(r,e,a,n,p,s,post) (r)[n] e ((((a)[n] p s)) post)
 #define xv_expr(r,e,a,p,b,n,post) (r)[n] e ((xv_op(a,p,b,n,post)))
 
+#define xv2_set(v,x,y)      (v)[0]=(x), (v)[1]=(y)
+#define xv3_set(v,x,y,z)    (v)[0]=(x), (v)[1]=(y), (v)[2]=(z)
+#define xv4_set(v,x,y,z,w)  (v)[0]=(x), (v)[1]=(y), (v)[2]=(z), (v)[3]=(w)
+
+#define xv2_zero(v,x,y)      xv2_set(v,0,0)
+#define xv3_zero(v,x,y,z)    xv3_set(v,0,0,0)
+#define xv4_zero(v,x,y,z,w)  xv4_set(v,0,0,0,0)
+
+#define xv2_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1]
+#define xv3_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1], (to)[2]=(from)[2]
+#define xv4_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1],\
+                            (to)[2]=(from)[2], (to)[3]=(from)[3]
+
 #define xv2_map(r,e,a,p,b,post)\
     xv_expr(r,e,a,p,b,0,post),\
     xv_expr(r,e,a,p,b,1,post)
@@ -195,51 +208,50 @@ typedef MMX_UINT_PTR mmx_ptr;
     xv_op(a,*,b,3,+0)
 
 #define xv2_cross(r,a,b) (r) = (((a)[0] * (b)[1]) - ((a)[1]) * (b)[0])
-#define xv3_cross(r, a, b)\
-    (r)[0] = (a)[1]*(b)[2] - (a)[2]*(b)[1],\
-    (r)[1] = (a)[2]*(b)[0] - (a)[0]*(b)[2],\
-    (r)[2] = (a)[0]*(b)[1] - (a)[1]*(b)[0]
 #define xv4_cross(r, a, b) xv3_cross(r, a, b), (r)[3] = 1
 
-#define xv_apply(r,e,a,p,s,post)xv##dim##_apply(r,e,a,p,s,post)
-#define xv_map(r,e,a,p,b,post)  xv##dim##_map(r,e,a,p,b,post)
+#define xv_apply(r,e,a,p,s,dim) xv##dim##_apply(r,e,a,p,s,+0)
+#define xv_map(r,e,a,p,b,dim)   xv##dim##_map(r,e,a,p,b,+0)
 
-#define xv_add(r,a,b,dim)       xv##dim##_map(r,=,a,+,b,+0)
-#define xv_sub(r,a,b,dim)       xv##dim##_map(r,=,a,-,b,+0)
-#define xv_addeq(r,b,dim)       xv##dim##_map(r,=,r,+,b,+0)
-#define xv_subeq(r,b,dim)       xv##dim##_map(r,=,r,-,b,+0)
+#define xv_applyi(r,e,a,p,s,post)xv##dim##_apply(r,e,a,p,s,post)
+#define xv_mapi(r,e,a,p,b,post)  xv##dim##_map(r,e,a,p,b,post)
 
-#define xv_muli(r,a,s,dim)      xv##dim##_apply(r,=,a,*,s,+0)
-#define xv_divi(r,a,s,dim)      xv##dim##_apply(r,=,a,/,s,+0)
-#define xv_addi(r,a,s,dim)      xv##dim##_apply(r,=,a,+,s,+0)
-#define xv_subi(r,a,s,dim)      xv##dim##_apply(r,=,a,-,s,+0)
+#define xv_add(r,a,b,dim)       xv_map(r,=,a,+,b, dim)
+#define xv_sub(r,a,b,dim)       xv_map(r,=,a,-,b, dim)
+#define xv_addeq(r,b,dim)       xv_map(r,=,r,+,b, dim)
+#define xv_subeq(r,b,dim)       xv_map(r,=,r,-,b, dim)
 
-#define xv_mulieq(r,s,dim)      xv##dim##_apply(r,=,r,*,s,+0)
-#define xv_divieq(r,s,dim)      xv##dim##_apply(r,=,r,/,s,+0)
-#define xv_addieq(r,s,dim)      xv##dim##_apply(r,=,r,+,s,+0)
-#define xv_subieq(r,s,dim)      xv##dim##_apply(r,=,r,-,s,+0)
+#define xv_muli(r,a,s,dim)      xv_apply(r,=,a,*,s,dim)
+#define xv_divi(r,a,s,dim)      xv_apply(r,=,a,/,s,dim)
+#define xv_addi(r,a,s,dim)      xv_apply(r,=,a,+,s,dim)
+#define xv_subi(r,a,s,dim)      xv_apply(r,=,a,-,s,dim)
 
-#define xv_addm(r,a,b,s,dim)    xv##dim##_map(r,=,a,+,b,*s)
-#define xv_subm(r,a,b,s,dim)    xv##dim##_map(r,=,a,-,b,*s)
-#define xv_addmeq(r,b,s,dim)    xv##dim##_map(r,=,r,+,b,*s)
-#define xv_submeq(r,b,s,dim)    xv##dim##_map(r,=,r,-,b,*s)
+#define xv_mulieq(r,s,dim)      xv_apply(r,=,r,*,s,dim)
+#define xv_divieq(r,s,dim)      xv_apply(r,=,r,/,s,dim)
+#define xv_addieq(r,s,dim)      xv_apply(r,=,r,+,s,dim)
+#define xv_subieq(r,s,dim)      xv_apply(r,=,r,-,s,dim)
 
-#define xv_addd(r,a,b,s,dim)    xv##dim##_map(r,=,a,+,b,/s)
-#define xv_subd(r,a,b,s,dim)    xv##dim##_map(r,=,a,-,b,/s)
-#define xv_adddeq(r,b,s,dim)    xv##dim##_map(r,=,r,+,b,/s)
-#define xv_subdeq(r,b,s,dim)    xv##dim##_map(r,=,r,-,b,/s)
+#define xv_addm(r,a,b,s,dim)    xv_mapi(r,=,a,+,b,*s,dim)
+#define xv_subm(r,a,b,s,dim)    xv_mapi(r,=,a,-,b,*s,dim)
+#define xv_addmeq(r,b,s,dim)    xv_mapi(r,=,r,+,b,*s,dim)
+#define xv_submeq(r,b,s,dim)    xv_mapi(r,=,r,-,b,*s,dim)
 
-#define xv_adda(r,a,b,s,dim)    xv##dim##_map(r,=,a,+,b,+s)
-#define xv_suba(r,a,b,s,dim)    xv##dim##_map(r,=,a,-,b,+s)
-#define xv_addaeq(r,b,s,dim)    xv##dim##_map(r,=,r,+,b,+s)
-#define xv_subaeq(r,b,s,dim)    xv##dim##_map(r,=,r,-,b,+s)
+#define xv_addd(r,a,b,s,dim)    xv_mapi(r,=,a,+,b,/s,dim)
+#define xv_subd(r,a,b,s,dim)    xv_mapi(r,=,a,-,b,/s,dim)
+#define xv_adddeq(r,b,s,dim)    xv_mapi(r,=,r,+,b,/s,dim)
+#define xv_subdeq(r,b,s,dim)    xv_mapi(r,=,r,-,b,/s,dim)
 
-#define xv_adds(r,a,b,s,dim)    xv##dim##_map(r,=,a,+,b,-s)
-#define xv_subs(r,a,b,s,dim)    xv##dim##_map(r,=,a,-,b,-s)
-#define xv_addseq(r,b,s,dim)    xv##dim##_map(r,=,r,+,b,-s)
-#define xv_subseq(r,b,s,dim)    xv##dim##_map(r,=,r,-,b,-s)
+#define xv_adda(r,a,b,s,dim)    xv_mapi(r,=,a,+,b,+s,dim)
+#define xv_suba(r,a,b,s,dim)    xv_mapi(r,=,a,-,b,+s,dim)
+#define xv_addaeq(r,b,s,dim)    xv_mapi(r,=,r,+,b,+s,dim)
+#define xv_subaeq(r,b,s,dim)    xv_mapi(r,=,r,-,b,+s,dim)
 
-#define xv_neg(r,a,dim)         xv##dim##_apply(r,=,a,*,-1.0f,+0)
+#define xv_adds(r,a,b,s,dim)    xv_mapi(r,=,a,+,b,-s,dim)
+#define xv_subs(r,a,b,s,dim)    xv_mapi(r,=,a,-,b,-s,dim)
+#define xv_addseq(r,b,s,dim)    xv_mapi(r,=,r,+,b,-s,dim)
+#define xv_subseq(r,b,s,dim)    xv_mapi(r,=,r,-,b,-s,dim)
+
+#define xv_neg(r,a,dim)         xv_applyi(r,=,a,*,-1.0f,+0)
 #define xv_dot(a,b,dim)         xv##dim##_dot(a,b)
 #define xv_len2(a,dim)          xv##dim##_dot(a,a)
 #define xv_len(a,dim)           ((float)MMX_SQRT(xv_len2(a,dim)))
@@ -247,8 +259,8 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_cross(r,a,b,dim)     xv##dim##_cross(r, a, b)
 
 #define xv_lerp(r,a,t,b,dim)\
-    xv##dim##_apply(r,=,a,*,(1.0f - (t)), +0);\
-    xv##dim##_apply(r,+=,b,*,t,+0)
+    xv##dim##_apply(r,=,a,*,(1.0f - (t)));\
+    xv##dim##_apply(r,+=,b,*,t)
 
 #define xv_norm(o, q, dim)do{\
     float len_i_ = xv_len2(q,dim);\
@@ -310,6 +322,7 @@ typedef MMX_UINT_PTR mmx_ptr;
 
 MMX_API float xv_inv_sqrt(float n);
 MMX_API float xv3_angle(float *axis, const float *a, const float *b);
+MMX_API void xv3_cross(float *result, const float *v1, const  float *v2);
 MMX_API void xv3_slerp(float *r, const float *a, float t, const float *b);
 MMX_API void xv3_project_to_sphere(float *r, const float *v, float radius);
 MMX_API void xv3_project_to_plane(float *r, const float *v, const float *normal,
@@ -357,6 +370,8 @@ MMX_API void xm4_identity(float *self);
 MMX_API void xm4_transpose(float *self);
 MMX_API void xm4_translate(float *out, const float *d);
 MMX_API void xm4_translatev(float *out, float x, float y, float z);
+MMX_API void xm4_scale(float *out, const float *scale);
+MMX_API void xm4_scalev(float *out, float x, float y, float z);
 MMX_API void xm4_rotate(float *out, float angle, const float *axis);
 MMX_API void xm4_rotatef(float *out, float angle, float X, float Y, float Z);
 MMX_API void xm4_rotate_x(float *out, float angle);
@@ -381,6 +396,8 @@ MMX_API void xm4_from_mat3(float *out, const float *matrix3);
  *                          QUATERNION
  * ---------------------------------------------------------------*/
 #define xq(q) ((float*)&(q))
+#define xq_set(q, x,y,z,w) xv4_set(q,x,y,z,w)
+#define xq_cpy(to, from) xv4_cpy(to,from)
 MMX_API void xq_from_mat3(float *quat, const float *mat3);
 MMX_API void xq_rotation(float *quat, float angle, float x, float y, float z);
 MMX_API void xq_transform(float *out, const float *q, const float *v);
@@ -408,45 +425,6 @@ MMX_API float xq_get_rotation(float *axis_output, const float *quat);
 #define xq_divi(r, a, s) xv_divi(r, a, s, 4)
 #define xq_mulieq(r, s) xv_mulieq(r, s, 4)
 #define xq_divieq(r, s) xv_divieq(r, s, 4)
-
-/* ---------------------------------------------------------------
- *                          COMPLEX
- * ---------------------------------------------------------------*/
-/* complex = {real, imaginary} */
-#define xc(q) ((float*)&(q))
-#define xc_add(r,a,b) xv_add(r,a,b,2)
-#define xc_sub(r,a,b) xv_sub(r,a,b,2)
-MMX_API void xc_mul(float *r, const float *a, const float *b);
-MMX_API void xc_div(float *r, const float *a, const float *b);
-
-#define xc_addeq(r,b) xv_addeq(r,b,2)
-#define xc_subeq(r,b) xv_subeq(r,b,2)
-#define xc_muleq(r,b) xc_mul(r, r, b)
-#define xc_diveq(r,b) xc_div(r, r, b)
-
-#define xc_addi(r,a,s) ((r)[0] = (a)[0] + (s), (r)[1] = (a)[1])
-#define xc_subi(r,a,s) ((r)[0] = (a)[0] - (s), (r)[1] = (a)[1])
-#define xc_muli(r,a,s) ((r)[0] = (a)[0] * (s), (r)[1] = (a)[1] * (s))
-#define xc_divi(r,a,s) ((r)[0] = (a)[0] / (s), (r)[1] = (a)[1] / (s))
-
-#define xc_addf(r,s,a) ((r)[0] = (s) + (a)[0], (r)[1] = (a)[1])
-#define xc_subf(r,s,a) ((r)[0] = (s) - (a)[0], (r)[1] = -(a)[1])
-#define xc_mulf(r,s,a) ((r)[0] = (s) * (a)[0], (r)[2] = (s)*(a)[1])
-MMX_API void xc_divf(float *r, float a, const float *b);
-
-#define xc_addfeq(r,s) xc_addf(r, s, r)
-#define xc_subfeq(r,s) xc_subf(r, s, r)
-#define xc_mulfeq(r,s) xc_mulf(r, s, r)
-#define xc_divfeq(r,s) xc_divf(r, s, r)
-
-#define xc_addieq(r,s) xc_addi(r, r, s)
-#define xc_subieq(r,s) xc_subi(r, r, s)
-#define xc_mulieq(r,s) xc_muli(r, r, s)
-#define xc_divieq(r,s) xc_divi(r, r, s)
-
-MMX_API void xc_sqrt(float *r, const float *c);
-MMX_API float xc_abs(const float *c);
-MMX_API void xc_reciprocal(float *r, const float *c);
 
 /* ---------------------------------------------------------------
  *                          PLANE
@@ -538,10 +516,10 @@ MMX_API int xb_intersects_box(const float *a, const float *b);
 #define MMX_GLOBAL static
 #define MMX_STORAGE static
 
-#define MMX_MIN(a,b) (((a)<(b))?(a):(b))
-#define MMX_MAX(a,b) (((a)>(b))?(a):(b))
-#define MMX_DEG2RAD(a) ((a)*(MMX_PI/180.0f))
-#define MMX_RAD2DEG(a) ((a)*(180.0f/MMX_PI))
+#define MMX_MIN(a,b)    (((a)<(b))?(a):(b))
+#define MMX_MAX(a,b)    (((a)>(b))?(a):(b))
+#define MMX_DEG2RAD(a)  ((a)*(MMX_PI/180.0f))
+#define MMX_RAD2DEG(a)  ((a)*(180.0f/MMX_PI))
 
 /* make sure we have a correct 32-bit integer type */
 typedef int mmx__check_uint32_size[(sizeof(mmx_uint) == 4) ? 1 : -1];
@@ -628,7 +606,9 @@ template<typename T> struct xv_alignof{struct Big {T x; char c;}; enum {
 #endif
 
 /* ---------------------------------------------------------------
+ *
  *                          UTIL
+ *
  * ---------------------------------------------------------------*/
 MMX_API float
 xv_inv_sqrt(float number)
@@ -641,6 +621,16 @@ xv_inv_sqrt(float number)
     conv.i = 0x5f375A84 - (conv.i >> 1);
     conv.f = conv.f * (threehalfs - (x2 * conv.f * conv.f));
     return conv.f;
+}
+
+MMX_API void
+xv3_cross(float *result, const float *v1, const float *v2)
+{
+    float v1x = v1[0], v1y = v1[1], v1z = v1[2];
+    float v2x = v2[0], v2y = v2[1], v2z = v2[2];
+    result[0] = (v1y * v2z) - (v1z * v2y);
+    result[1] = (v1z * v2x) - (v1x * v2z);
+    result[2] = (v1x * v2y) - (v1y * v2x);
 }
 
 static void*
@@ -757,7 +747,9 @@ xv_zero_size(void *ptr, mmx_size size)
 }
 
 /* ---------------------------------------------------------------
+ *
  *                          VECTOR
+ *
  * ---------------------------------------------------------------*/
 MMX_API float
 xv3_angle(float *axis, const float *a, const float *b)
@@ -850,7 +842,9 @@ xv3_project_along_plane(float *r, const float *v, const float *normal,
 
 
 /* ---------------------------------------------------------------
- *                          Matrix
+ *
+ *                          MATRIX
+ *
  * ---------------------------------------------------------------*/
 MMX_API void
 xm2_identity(float *m)
@@ -872,28 +866,44 @@ xm2_transpose(float *m)
 }
 
 MMX_API void
-xm2_mul(float *product, const float *a, const float *b)
+xm2_mul(float *product, const float *m1, const float *m2)
 {
     #define A(col, row) a[(col<<1)+row]
     #define B(col, row) b[(col<<1)+row]
-    #define P(col, row) product[(col<<1)+row]
+    #define P(col, row) o[(col<<1)+row]
+
+    /* load */
+    float a[4], b[4], o[4];
+    MMX_MEMCPY(a, m1, sizeof(a));
+    MMX_MEMCPY(b, m2, sizeof(b));
+
+    /* calculate */
     P(0,0) = A(0,0) * B(0,0) + A(0,1) * B(1,0);
     P(0,1) = A(0,0) * B(0,1) + A(0,1) * B(1,1);
     P(1,0) = A(1,0) * B(0,0) + A(1,1) * B(1,0);
     P(1,1) = A(1,0) * B(0,1) + A(1,1) * B(1,1);
+
+    /* store */
+    MMX_MEMCPY(product, o, sizeof(o));
+
     #undef A
     #undef B
     #undef P
 }
 
 MMX_API void
-xm2_transform(float *r, const float *m, const float *v)
+xm2_transform(float *r, const float *m, const float *vec)
 {
+    float v[2], o[2];
     #define X(a) a[0]
     #define Y(a) a[1]
     #define M(col, row) m[(col<<1)+row]
-    X(r) = M(0,0)*X(v) + M(0,1)*Y(v);
-    Y(r) = M(1,0)*X(v) + M(1,1)*Y(v);
+
+    xv2_cpy(v, vec);
+    X(o) = M(0,0)*X(v) + M(0,1)*Y(v);
+    Y(o) = M(1,0)*X(v) + M(1,1)*Y(v);
+    xv2_cpy(r, o);
+
     #undef X
     #undef Y
     #undef M
@@ -1034,21 +1044,20 @@ MMX_API void
 xm3_rotate(float *m, float angle, float X, float Y, float Z)
 {
     #define M(col, row) m[(col*3)+row]
-    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
-    float ci = 1.0f - c;
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
+    float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+    float oc = 1.0f - c;
+    M(0,0) = oc * X * X + c;
+    M(0,1) = oc * X * Y - Z * s;
+    M(0,2) = oc * Z * X + Y * s;
 
-    M(0,0) = X*X + (1.0f-X*X)*c;
-    M(0,1) = X*Y*ci - Z*s;
-    M(0,2) = X*Z*ci + Y*s;
+    M(1,0) = oc * X * Y + Z * s;
+    M(1,1) = oc * Y * Y + c;
+    M(1,2) = oc * Y * Z - X * s;
 
-    M(1,0) = X*Y*ci + Z*s;
-    M(1,1) = Y*Y+(1.0f-Y*Y)*c;
-    M(1,2) = Y*Z*ci -X*s;
-
-    M(2,0) = X*Z*ci - Y*s;
-    M(2,1) = Y*Z*ci + X*s;
-    M(2,2) = Z*Z+(1.0f - Z*Z)*c;
+    M(2,0) = oc * Z * X - Y * s;
+    M(2,1) = oc * Y * Z + X * s;
+    M(2,2) = oc * Z * Z + c;
     #undef M
 }
 
@@ -1095,15 +1104,20 @@ xm3_scale(float *m, float x, float y, float z)
 }
 
 MMX_API void
-xm3_transform(float *r, const float *m, const float *v)
+xm3_transform(float *r, const float *m, const float *vec)
 {
+    float v[3], o[3];
     #define X(a) (a)[0]
     #define Y(a) (a)[1]
     #define Z(a) (a)[2]
     #define M(col, row) m[(col*3)+row]
-    X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v);
-    Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v);
-    Z(r) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v);
+
+    xv3_cpy(v, vec);
+    X(o) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v);
+    Y(o) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v);
+    Z(o) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v);
+    xv3_cpy(r, o);
+
     #undef X
     #undef Y
     #undef Z
@@ -1111,18 +1125,29 @@ xm3_transform(float *r, const float *m, const float *v)
 }
 
 MMX_API void
-xm3_mul(float *product, const float *a, const float *b)
+xm3_mul(float *product, const float *m1, const float *m2)
 {
+    int i;
+    float a[9], b[9], o[9];
     #define A(col, row) (a)[(col*3)+row]
     #define B(col, row) (b)[(col*3)+row]
-    #define P(col, row) (product)[(col*3)+row]
-    int i;
+    #define P(col, row) (o)[(col*3)+row]
+
+    /* load */
+    MMX_MEMCPY(a, m1, sizeof(a));
+    MMX_MEMCPY(b, m2, sizeof(b));
+
+    /* calculate */
     for (i = 0; i < 3; ++i) {
         const float ai0 = A(i,0), ai1 = A(i,1), ai2 = A(i,2);
         P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0);
         P(i,1) = ai0 * B(0,1) + ai1 * B(1,1) + ai2 * B(2,1);
         P(i,2) = ai0 * B(0,2) + ai1 * B(1,2) + ai2 * B(2,2);
     }
+
+    /* store */
+    MMX_MEMCPY(product, o, sizeof(o));
+
     #undef A
     #undef B
     #undef P
@@ -1264,12 +1289,19 @@ xm4_transpose(float *m)
 }
 
 MMX_API void
-xm4_mul(float *product, const float *a, const float *b)
+xm4_mul(float *product, const float *m1, const float *m2)
 {
+    int i;
+    float a[16], b[16], o[16];
     #define A(col, row) a[(col << 2)+row]
     #define B(col, row) b[(col << 2)+row]
-    #define P(col, row) product[(col << 2)+row]
-    int i;
+    #define P(col, row) o[(col << 2)+row]
+
+    /* load */
+    MMX_MEMCPY(a, m1, sizeof(a));
+    MMX_MEMCPY(b, m2, sizeof(b));
+
+    /* calculate */
     for (i = 0; i < 4; ++i) {
         const float ai0 = A(i,0), ai1 = A(i,1), ai2 = A(i,2), ai3 = A(i,3);
         P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0) + ai3 * B(3,0);
@@ -1277,6 +1309,9 @@ xm4_mul(float *product, const float *a, const float *b)
         P(i,2) = ai0 * B(0,2) + ai1 * B(1,2) + ai2 * B(2,2) + ai3 * B(3,2);
         P(i,3) = ai0 * B(0,3) + ai1 * B(1,3) + ai2 * B(2,3) + ai3 * B(3,3);
     }
+
+    /* store */
+    MMX_MEMCPY(product, o, sizeof(o));
     #undef A
     #undef B
     #undef P
@@ -1407,6 +1442,21 @@ xm4_translatev(float *m, float x, float y, float z)
     #undef M
 }
 
+MMX_API void
+xm4_scale(float *out, const float *scale)
+{xm4_scalev(out, scale[0], scale[1], scale[2]);}
+
+MMX_API void
+xm4_scalev(float *m, float x, float y, float z)
+{
+    #define M(col, row) m[(col<<2)+row]
+    xv_zero_array(m, 16);
+    M(0,0) = x;
+    M(1,1) = y;
+    M(2,2) = z;
+    M(3,3) = 1.0f;
+    #undef M
+}
 
 MMX_API void
 xm4_rotate(float *out, float angle, const float *axis)
@@ -1526,6 +1576,7 @@ xm4_lookat(float *m, const float *eye, const float *center, const float *up)
     M(0,0) = s[0],  M(1,0) = s[1],  M(2,0) = s[2];
     M(0,1) = u[0],  M(1,1) = u[1],  M(2,1) = u[2];
     M(0,2) = -f[0], M(1,2) = -f[1], M(2,2) = -f[2];
+
     M(3,0) = -xv_dot(s, eye, 3);
     M(3,1) = -xv_dot(u, eye, 3);
     M(3,2) = xv_dot(f, eye, 3);
@@ -1534,18 +1585,21 @@ xm4_lookat(float *m, const float *eye, const float *center, const float *up)
 }
 
 MMX_API void
-xm4_transform(float *r, const float *m, const float *v)
+xm4_transform(float *r, const float *m, const float *vec)
 {
+    float v[4], o[4];
     #define X(a) a[0]
     #define Y(a) a[1]
     #define Z(a) a[2]
     #define W(a) a[3]
-
     #define M(col, row) m[(col<<2)+row]
-    X(r) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v) + M(0,3)*W(v);
-    Y(r) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v) + M(1,3)*W(v);
-    Z(r) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v) + M(2,3)*W(v);
-    W(r) = M(3,0)*X(v) + M(3,1)*Y(v) + M(3,2)*Z(v) + M(3,3)*W(v);
+
+    xv4_cpy(v, vec);
+    X(o) = M(0,0)*X(v) + M(0,1)*Y(v) + M(0,2)*Z(v) + M(0,3)*W(v);
+    Y(o) = M(1,0)*X(v) + M(1,1)*Y(v) + M(1,2)*Z(v) + M(1,3)*W(v);
+    Z(o) = M(2,0)*X(v) + M(2,1)*Y(v) + M(2,2)*Z(v) + M(2,3)*W(v);
+    W(o) = M(3,0)*X(v) + M(3,1)*Y(v) + M(3,2)*Z(v) + M(3,3)*W(v);
+    xv4_cpy(r, o);
 
     #undef X
     #undef Y
@@ -1592,7 +1646,9 @@ xm4_from_mat3(float *r, const float *m)
 }
 
 /* ---------------------------------------------------------------
- *                          Quaternion
+ *
+ *                          QUATERNION
+ *
  * ---------------------------------------------------------------*/
 MMX_API void
 xq_rotation(float *q, float angle, float x, float y, float z)
@@ -1626,14 +1682,16 @@ xq_get_rotation(float *axis, const float *q)
 }
 
 MMX_API void
-xq_transform(float *out, const float *q, const float *v)
+xq_transform(float *out, const float *q, const float *vec)
 {
+    float v[3];
+    float wx, wy, wz, xx, yy, yz, xy, xz, zz, x2, y2, z2;
     #define X(a) a[0]
     #define Y(a) a[1]
     #define Z(a) a[2]
     #define W(a) a[3]
 
-    float wx, wy, wz, xx, yy, yz, xy, xz, zz, x2, y2, z2;
+    xv3_cpy(v, vec);
     x2 = X(q) + X(q); y2 = Y(q) + Y(q); z2 = Z(q) + Z(q);
     xx = X(q) * x2; xy = X(q) * y2; xz = X(q) * z2;
     yy = Y(q) * y2; yz = Y(q) * z2; zz = Z(q) * z2;
@@ -1669,12 +1727,18 @@ xq_inverteq(float *q)
 }
 
 MMX_API void
-xq_mul(float *out, const float *q1, const float *q2)
+xq_mul(float *out, const float *a, const float *b)
 {
-    out[0] = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1];
-    out[1] = q1[3] * q2[1] + q1[1] * q2[3] + q1[2] * q2[0] - q1[0] * q2[2];
-    out[2] = q1[3] * q2[2] + q1[2] * q2[3] + q1[0] * q2[1] - q1[1] * q2[0];
-    out[3] = q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2];
+    /* load */
+    float o[4], q1[4], q2[4];
+    xq_cpy(q1, a); xq_cpy(q2, b);
+    /* calculate */
+    o[0] = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1];
+    o[1] = q1[3] * q2[1] + q1[1] * q2[3] + q1[2] * q2[0] - q1[0] * q2[2];
+    o[2] = q1[3] * q2[2] + q1[2] * q2[3] + q1[0] * q2[1] - q1[1] * q2[0];
+    o[3] = q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2];
+    /* store */
+    xq_cpy(out, o);
 }
 
 MMX_API void
@@ -1730,10 +1794,11 @@ xq_from_mat3(float *q, const float *m)
         q[2] = (M(0,2) - M(2,0)) * s;
         q[3] = (M(1,0) - M(0,1)) * s;
     } else {
-        int i, j, k;
-        i = 0;
+        int i = 0, j, k;
+
         if (M(1,1) > M(0,0) ) i = 1;
         if (M(2,2) > M(i,i) ) i = 2;
+
         j = (i + 1) % 3;
         k = (i + 2) % 3;
 
@@ -1748,147 +1813,9 @@ xq_from_mat3(float *q, const float *m)
 }
 
 /* ---------------------------------------------------------------
- *                          COMPLEX
- * ---------------------------------------------------------------*/
-MMX_API void
-xc_mul(float *d, const float *a, const float *b)
-{
-    #define R(v) (v)[0]
-    #define I(v) (v)[1]
-    float r = R(a) * R(b) - I(a) * I(b);
-    float i = I(a) * R(b) + R(a) * I(b);
-    R(d) = r; I(d) = r;
-    #undef R
-    #undef I
-}
-
-MMX_API void
-xc_div(float *d,const float *a, const float *b)
-{
-    #define R(v) (v)[0]
-    #define I(v) (v)[1]
-    float s, t, r, i;
-    if (MMX_FABS(R(b)) >= MMX_FABS(I(b))) {
-        s = I(b) / R(b);
-        t = 1.0f / (R(b) + s * I(b));
-        r = (R(a) + s * I(a)) * t;
-        i = (I(a) - s * R(a)) * t;
-    } else {
-        s = R(b) / I(b);
-        t = 1.0f / (s * R(b) + I(b));
-        r = (R(a) *s + I(a)) * t;
-        i = (I(a) *s - R(a)) * t;
-    }
-    R(d) = r;
-    I(d) = i;
-    #undef R
-    #undef I
-}
-
-MMX_API void
-xc_divf(float *d, float a, const float *b)
-{
-    #define R(v) (v)[0]
-    #define I(v) (v)[1]
-    float s, t, r, i;
-    if (MMX_FABS(R(b)) >= MMX_FABS(I(b))) {
-        s = I(b) / R(b);
-        t = a / (R(b) + s * I(b));
-        r = t;
-        i = -s * t;
-    } else {
-        s = R(b) / I(b);
-        t = a / (s * R(b) + I(b));
-        r = s * t;
-        i = -t;
-    }
-    R(d) = r;
-    I(d) = i;
-    #undef R
-    #undef I
-}
-
-MMX_API void
-xc_sqrt(float *d, const float *c)
-{
-    #define R(v) (v)[0]
-    #define I(v) (v)[1]
-    float x, y, w;
-    if (R(c) == 0.0f && I(c) == 0.0f) {
-        R(d) = 0.0f;
-        I(d) = 0.0f;
-        return;
-    }
-    x = (float)MMX_FABS(R(c));
-    y = (float)MMX_FABS(I(c));
-    if (x >= y) {
-        w = y / x;
-        w = (float)MMX_SQRT(x) * (float)MMX_SQRT(0.5f * (1.0f + (float)MMX_SQRT(1.0f + w * w)));
-    } else {
-        w = x / y;
-        w = (float)MMX_SQRT(y) * (float)MMX_SQRT(0.5f * (w + (float)MMX_SQRT(1.0f + w * w)));
-    }
-
-    if (w == 0.0f) {
-        R(d) = 0.0f;
-        I(d) = 0.0f;
-    } else if (R(c) >= 0.0f) {
-        R(d) = w;
-        I(d) = 0.5f * I(c) / w;
-    } else {
-        R(d) = 0.5f * y / w;
-        I(d) = (I(c) >= 0.0f) ? w : -w;
-    }
-    #undef R
-    #undef I
-}
-
-MMX_API float
-xc_abs(const float *a)
-{
-    #define R(v) (v)[0]
-    #define I(v) (v)[1]
-    float x,y,t;
-    x = (float)MMX_FABS(R(a));
-    y = (float)MMX_FABS(I(a));
-    if (x == 0.0f)
-        return y;
-    else if (y == 0.0f)
-        return x;
-    else if (x > y) {
-        t = y / x;
-        return x * (float)MMX_SQRT(1.0f + t * t);
-    } else {
-        t = x / y;
-        return y * (float)MMX_SQRT(1.0f + t * t);
-    }
-    #undef R
-    #undef I
-}
-
-MMX_API void
-xc_reciprocal(float *d, const float *c)
-{
-    #define R(v) (v)[0]
-    #define I(v) (v)[1]
-    float s, t;
-    if (MMX_FABS(R(c)) >= MMX_FABS(I(c))) {
-        s = I(c) / R(c);
-        t = 1.0f / (R(c) + s * I(c));
-        R(d) = t;
-        I(d) = -s * t;
-    } else {
-        s = R(c) / I(c);
-        t = 1.0f / (s * R(c) + I(c));
-        R(d) = s * t;
-        I(d) = -t;
-    }
-    #undef R
-    #undef I
-}
-
-/* ---------------------------------------------------------------
+ *
  *                          PLANE
+ *
  * ---------------------------------------------------------------*/
 MMX_API void
 xp_make(float *p, const float *normal, float distance)
@@ -2040,7 +1967,9 @@ xp_intersect_plane(float *start, float *dir, const float *p0, const float *p1)
 }
 
 /* ---------------------------------------------------------------
+ *
  *                          SPHERE
+ *
  * ---------------------------------------------------------------*/
 MMX_API void
 xs_make(float *s, const float *origin, float radius)
@@ -2206,7 +2135,9 @@ xs_from_box(float *sphere, const float *box)
 }
 
 /* ---------------------------------------------------------------
+ *
  *                          BOX
+ *
  * ---------------------------------------------------------------*/
 MMX_API void
 xb_make(float *b, const float *min, const float *max)
@@ -2338,18 +2269,12 @@ xb_intersection(float *r, const float *a, const float *b)
 MMX_API void
 xb_intersection_self(float *r, const float *b)
 {
-    if (b[0] > r[0])
-        r[0] = b[0];
-    if (b[1] > r[1])
-        r[1] = b[1];
-    if (b[2] > r[2])
-        r[2] = b[2];
-    if (b[3] < r[3])
-        r[3] = b[3];
-    if (b[4] < r[4])
-        r[4] = b[4];
-    if (b[5] < r[5])
-        r[5] = b[5];
+    if (b[0] > r[0]) r[0] = b[0];
+    if (b[1] > r[1]) r[1] = b[1];
+    if (b[2] > r[2]) r[2] = b[2];
+    if (b[3] < r[3]) r[3] = b[3];
+    if (b[4] < r[4]) r[4] = b[4];
+    if (b[5] < r[5]) r[5] = b[5];
 }
 
 MMX_API void
