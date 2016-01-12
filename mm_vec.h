@@ -213,8 +213,8 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_apply(r,e,a,p,s,dim) xv##dim##_apply(r,e,a,p,s,+0)
 #define xv_map(r,e,a,p,b,dim)   xv##dim##_map(r,e,a,p,b,+0)
 
-#define xv_applyi(r,e,a,p,s,post)xv##dim##_apply(r,e,a,p,s,post)
-#define xv_mapi(r,e,a,p,b,post)  xv##dim##_map(r,e,a,p,b,post)
+#define xv_applyi(r,e,a,p,s,post,dim) xv##dim##_apply(r,e,a,p,s,post)
+#define xv_mapi(r,e,a,p,b,post,dim)   xv##dim##_map(r,e,a,p,b,post)
 
 #define xv_add(r,a,b,dim)       xv_map(r,=,a,+,b, dim)
 #define xv_sub(r,a,b,dim)       xv_map(r,=,a,-,b, dim)
@@ -251,7 +251,7 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_addseq(r,b,s,dim)    xv_mapi(r,=,r,+,b,-s,dim)
 #define xv_subseq(r,b,s,dim)    xv_mapi(r,=,r,-,b,-s,dim)
 
-#define xv_neg(r,a,dim)         xv_applyi(r,=,a,*,-1.0f,+0)
+#define xv_neg(r,a,dim)         xv_applyi(r,=,a,*,-1.0f,+0,dim)
 #define xv_dot(a,b,dim)         xv##dim##_dot(a,b)
 #define xv_len2(a,dim)          xv##dim##_dot(a,a)
 #define xv_len(a,dim)           ((float)MMX_SQRT(xv_len2(a,dim)))
@@ -259,8 +259,8 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_cross(r,a,b,dim)     xv##dim##_cross(r, a, b)
 
 #define xv_lerp(r,a,t,b,dim)\
-    xv##dim##_apply(r,=,a,*,(1.0f - (t)));\
-    xv##dim##_apply(r,+=,b,*,t)
+    xv_apply(r,=,a,*,(1.0f - (t)),dim);\
+    xv_apply(r,+=,b,*,t, dim)
 
 #define xv_norm(o, q, dim)do{\
     float len_i_ = xv_len2(q,dim);\
@@ -329,7 +329,10 @@ MMX_API void xv3_project_to_plane(float *r, const float *v, const float *normal,
                                 float over_bounce);
 MMX_API int xv3_project_along_plane(float *r, const float *v, const float *normal,
                                     float epsilon, float over_bounce);
-
+MMX_API void xv3_project(float *res3, const float *obj3, const float *mat4_model,
+                        const float *mat4_proj, float *viewport4);
+MMX_API void xv3_unproject(float *res3, const float *window2, const float *mat4_model,
+                        const float *mat4_proj, float *viewport4);
 /* ---------------------------------------------------------------
  *                          MATRIX
  * ---------------------------------------------------------------*/
@@ -400,6 +403,7 @@ MMX_API void xm4_from_mat3(float *out, const float *matrix3);
 #define xq_cpy(to, from) xv4_cpy(to,from)
 MMX_API void xq_from_mat3(float *quat, const float *mat3);
 MMX_API void xq_rotation(float *quat, float angle, float x, float y, float z);
+MMX_API void xq_rotation_from_to(float *quat, const float *from_vec3, const float *to_vec3);
 MMX_API void xq_transform(float *out, const float *q, const float *v);
 MMX_API void xq_mul(float *out, const float *a, const float *b);
 MMX_API void xq_integrate2D(float *out, const float *q, float *omega, float delta);
@@ -417,6 +421,7 @@ MMX_API float xq_get_rotation(float *axis_output, const float *quat);
 #define xq_lerp(r,a,t,b) xv_lerp(r,a,t,b,4)
 #define xq_lerpeq(r,a,t,b) xv_lerp(a,a,t,b,4)
 #define xq_lerp_norm(len, r,a,t,b) xv_lerp(r,a,t,b,4); xv_normeq(len, r)
+#define xq_slerp(r, a, b) xq_add(r, a, b), xq_normeq(r)
 #define xq_add(r, a, b) xv_add(r, a, b, 4)
 #define xq_sub(r, a, b) xv_sub(r, a, b, 4)
 #define xq_addeq(r, b) xv_addeq(r, b, 4)
@@ -430,47 +435,47 @@ MMX_API float xq_get_rotation(float *axis_output, const float *quat);
  *                          PLANE
  * ---------------------------------------------------------------*/
 /* plane sides */
-#define XP_FRONT    0
-#define XP_BACK     1
-#define XP_ON       2
-#define XP_CROSS    3
+#define XPLANE_FRONT    0
+#define XPLANE_BACK     1
+#define XPLANE_ON       2
+#define XPLANE_CROSS    3
 
 /* plane = a * x + b * y + c * z + d = 0 */
 #define xp(p) ((float*)&(p))
-MMX_API void xp_make(float *plane, const float *normal, float distance);
-MMX_API int xp_from_points(float *plane, const float *pnt1, const float *pnt2, const float *pnt3);
-MMX_API int xp_from_vec(float *plane, const float *v1, const float *v2, const float *pos);
-MMX_API void xp_translate(float *out, const float *plane, const float *translation);
-MMX_API void xp_translateq(float *plane, const float *translation);
-MMX_API void xp_rotate(float *out, const float *plane, const float *origin, const float *m33);
-MMX_API void xp_rotate_self(float *plane, const float *orgin, const float *m33);
-MMX_API float xp_norm(float *plane, const float *p);
-MMX_API float xp_norm_self(float *self);
-MMX_API float xp_distance(const float *plane, const float *v3);
-MMX_API int xp_side(const float *plane, const float *v3, float epsilon);
-MMX_API int xp_intersect_line(const float *plane, const float *line_start, const float *line_end);
-MMX_API int xp_intersect_ray(float *scale, const float *p, const float *start, const float *dir);
-MMX_API int xp_intersect_plane(float *start, float *dir, const float *p0, const float *p1);
+MMX_API void xplane_make(float *plane, const float *normal, float distance);
+MMX_API int xplane_from_points(float *plane, const float *pnt1, const float *pnt2, const float *pnt3);
+MMX_API int xplane_from_vec(float *plane, const float *v1, const float *v2, const float *pos);
+MMX_API void xplane_translate(float *out, const float *plane, const float *translation);
+MMX_API void xplane_translateq(float *plane, const float *translation);
+MMX_API void xplane_rotate(float *out, const float *plane, const float *origin, const float *m33);
+MMX_API void xplane_rotate_self(float *plane, const float *orgin, const float *m33);
+MMX_API float xplane_norm(float *plane, const float *p);
+MMX_API float xplane_norm_self(float *self);
+MMX_API float xplane_distance(const float *plane, const float *v3);
+MMX_API int xplane_side(const float *plane, const float *v3, float epsilon);
+MMX_API int xplane_intersect_line(const float *plane, const float *line_start, const float *line_end);
+MMX_API int xplane_intersect_ray(float *scale, const float *p, const float *start, const float *dir);
+MMX_API int xplane_intersect_plane(float *start, float *dir, const float *p0, const float *p1);
 
 /* ---------------------------------------------------------------
  *                          SPHERE
  * ---------------------------------------------------------------*/
 /* sphere = {origin:(x,y,z),radius}*/
 #define xs(p) ((float*)&(p))
-MMX_API void xs_make(float *sphere, const float *origin, float radius);
-MMX_API int xs_add_point(float *sphere, const float *point);
-MMX_API int xs_add_sphere(float *self, const float *sphere);
-MMX_API void xs_expand(float *out, const float *in, float d);
-MMX_API void xs_expand_self(float *self, float d);
-MMX_API void xs_translate(float *out, const float *in, const float *translation);
-MMX_API void xs_translate_self(float *self, const float *translation);
-MMX_API float xs_plane_distance(const float *sphere, const float *point);
-MMX_API int xs_plane_side(const float *sphere, const float *plane, float epsilon);
-MMX_API int xs_contains_point(const float *sphere, const float *point);
-MMX_API int xs_intersects_line(const float *sphere, const float *start, const float *end);
-MMX_API int xs_intersects_ray(float *scale0, float *scale1, const float *sphere, const float *start, const float *dir);
-MMX_API int xs_intersects_sphere(const float *a, const float *b);
-MMX_API void xs_from_box(float *sphere, const float *box);
+MMX_API void xsphere_make(float *sphere, const float *origin, float radius);
+MMX_API int xsphere_add_point(float *sphere, const float *point);
+MMX_API int xsphere_add_sphere(float *self, const float *sphere);
+MMX_API void xsphere_expand(float *out, const float *in, float d);
+MMX_API void xsphere_expand_self(float *self, float d);
+MMX_API void xsphere_translate(float *out, const float *in, const float *translation);
+MMX_API void xsphere_translate_self(float *self, const float *translation);
+MMX_API float xsphere_plane_distance(const float *sphere, const float *point);
+MMX_API int xsphere_plane_side(const float *sphere, const float *plane, float epsilon);
+MMX_API int xsphere_contains_point(const float *sphere, const float *point);
+MMX_API int xsphere_intersects_line(const float *sphere, const float *start, const float *end);
+MMX_API int xsphere_intersects_ray(float *scale0, float *scale1, const float *sphere, const float *start, const float *dir);
+MMX_API int xsphere_intersects_sphere(const float *a, const float *b);
+MMX_API void xsphere_from_box(float *sphere, const float *box);
 
 /* ---------------------------------------------------------------
  *                          BOX
@@ -478,27 +483,27 @@ MMX_API void xs_from_box(float *sphere, const float *box);
 /* Axis Aligned Bounding Box */
 /* box = {min(x,y,z)},max(x,y,z)}*/
 #define xb(p) ((float*)&(p))
-MMX_API void xb_make(float *box, const float *min, const float *max);
-MMX_API void xb_from_points(float *box, const void *verts, int num, int stride, int offset);
-MMX_API int xb_add_point(float *box, const float *point);
-MMX_API int xb_add_box(float *self, const float *box);
-MMX_API void xb_center(float *center, const float *box);
-MMX_API void xb_radius(float *radius, const float *box);
-MMX_API void xb_expand(float *out, const float *in, float d);
-MMX_API void xb_expand_self(float *self, float d);
-MMX_API void xb_transform(float *out, const float *in, const float *origin, const float *mat33);
-MMX_API void xb_translate(float *out, const float *in, const float *t);
-MMX_API void xb_translate_self(float *self, const float *t);
-MMX_API void xb_rotate(float *out, const float *in, const float *mat33);
-MMX_API void xb_rotate_self(float *self, const float *mat33);
-MMX_API void xb_intersection(float *out, const float *a, const float *b);
-MMX_API void xb_intersection_self(float *self, const float *box);
-MMX_API float xb_plane_distance(const float *box, const float *plane);
-MMX_API int xb_plane_side(const float *sphere, const float *plane, float epsilon);
-MMX_API int xb_contains_point(const float *box, const float *plane);
-MMX_API int xb_intersects_line(const float *box, const float *start, const float *end);
-MMX_API int xb_intersects_ray(float *scale, const float *box, const float *start, const float *dir);
-MMX_API int xb_intersects_box(const float *a, const float *b);
+MMX_API void xbox_make(float *box, const float *min, const float *max);
+MMX_API void xbox_from_points(float *box, const void *verts, int num, int stride, int offset);
+MMX_API int xbox_add_point(float *box, const float *point);
+MMX_API int xbox_add_box(float *self, const float *box);
+MMX_API void xbox_center(float *center, const float *box);
+MMX_API void xbox_radius(float *radius, const float *box);
+MMX_API void xbox_expand(float *out, const float *in, float d);
+MMX_API void xbox_expand_self(float *self, float d);
+MMX_API void xbox_transform(float *out, const float *in, const float *origin, const float *mat33);
+MMX_API void xbox_translate(float *out, const float *in, const float *t);
+MMX_API void xbox_translate_self(float *self, const float *t);
+MMX_API void xbox_rotate(float *out, const float *in, const float *mat33);
+MMX_API void xbox_rotate_self(float *self, const float *mat33);
+MMX_API void xbox_intersection(float *out, const float *a, const float *b);
+MMX_API void xbox_intersection_self(float *self, const float *box);
+MMX_API float xbox_plane_distance(const float *box, const float *plane);
+MMX_API int xbox_plane_side(const float *sphere, const float *plane, float epsilon);
+MMX_API int xbox_contains_point(const float *box, const float *plane);
+MMX_API int xbox_intersects_line(const float *box, const float *start, const float *end);
+MMX_API int xbox_intersects_ray(float *scale, const float *box, const float *start, const float *dir);
+MMX_API int xbox_intersects_box(const float *a, const float *b);
 
 #ifdef __cplusplus
 }
@@ -840,6 +845,45 @@ xv3_project_along_plane(float *r, const float *v, const float *normal,
     return 1;
 }
 
+MMX_API void
+xv3_project(float *res3, const float *obj3, const float *mat_model,
+    const float *mat_proj, float *viewport)
+{
+    float tmp[4];
+    xv3_cpy(tmp, obj3);
+    tmp[3] = 1.0f;
+
+    xm4_transform(tmp, mat_model, tmp);
+    xm4_transform(tmp, mat_proj, tmp);
+
+    xv_divieq(tmp, tmp[3], 4);
+    xv_mulieq(tmp, 0.5f, 4);
+    xv_addieq(tmp, 0.5f, 4);
+
+    tmp[0] = tmp[0] * (viewport[2] + viewport[0]);
+    tmp[1] = tmp[1] * (viewport[3] + viewport[1]);
+    xv3_cpy(res3, tmp);
+}
+
+MMX_API void
+xv3_unproject(float *res3, const float *win, const float *mat_model,
+    const float *mat_proj, float *viewport)
+{
+    float inverse[16], tmp[4];
+    xv3_cpy(tmp, win); tmp[3] = 1.0f;
+    xm4_mul(inverse, mat_proj, mat_model);
+    xm4_inverse_self(inverse);
+
+    tmp[0] = (tmp[0] - viewport[0]) / viewport[2];
+    tmp[1] = (tmp[1] - viewport[1]) / viewport[3];
+
+    xv_mulieq(tmp, 2, 4);
+    xv_subieq(tmp, 1, 4);
+
+    xm4_transform(tmp, inverse, tmp);
+    xv_divieq(tmp, tmp[3], 4);
+    xv3_cpy(res3, tmp);
+}
 
 /* ---------------------------------------------------------------
  *
@@ -1661,6 +1705,22 @@ xq_rotation(float *q, float angle, float x, float y, float z)
    q[3] = (float)MMX_COS(radians/2.0f);
 }
 
+MMX_API void
+xq_rotation_from_to(float *q, const float *u, const float *v)
+{
+    float w[3];
+    float norm_u_norm_v = (float)MMX_SQRT(xv_dot(u,u,3) * xv_dot(v,v,3));
+    float real_part = norm_u_norm_v + xv_dot(u,v,3);
+    if (real_part < (1.e-6f * norm_u_norm_v)) {
+        real_part = 0;
+        if (MMX_FABS(u[0]) > MMX_FABS(u[2]))
+            xv3_set(w, -u[1], u[0], 0.0f);
+        else xv3_set(w, 0.0f, -u[2], u[1]);
+    } else xv_cross(w, u , v, 3);
+    xq_rotation(q, real_part, w[0], w[1], w[2]);
+    xq_normeq(q);
+}
+
 MMX_API float
 xq_get_rotation(float *axis, const float *q)
 {
@@ -1818,7 +1878,7 @@ xq_from_mat3(float *q, const float *m)
  *
  * ---------------------------------------------------------------*/
 MMX_API void
-xp_make(float *p, const float *normal, float distance)
+xplane_make(float *p, const float *normal, float distance)
 {
     p[0] = normal[0];
     p[1] = normal[1];
@@ -1827,31 +1887,31 @@ xp_make(float *p, const float *normal, float distance)
 }
 
 MMX_API int
-xp_from_points(float *p, const float *p1, const float *p2, const float *p3)
+xplane_from_points(float *p, const float *p1, const float *p2, const float *p3)
 {
     float t0[3], t1[3];
     xv_sub(t0, p1, p2, 3);
     xv_sub(t1, p3, p2, 3);
     xv_cross(p, t0, t1, 3);
-    if (xp_norm_self(p) == 0.0f)
+    if (xplane_norm_self(p) == 0.0f)
         return 0;
     p[3] = -xv_dot(p, p2, 3);
     return 1;
 }
 
 MMX_API int
-xp_from_vec(float *r, const float *dir1, const float *dir2, const float *p)
+xplane_from_vec(float *r, const float *dir1, const float *dir2, const float *p)
 {
     float t0[3];
     xv_cross(r, dir1, dir2, 3);
-    if (xp_norm_self(r) == 0.0f)
+    if (xplane_norm_self(r) == 0.0f)
         return 0;
     r[3] = -xv_dot(r, p, 3);
     return 1;
 }
 
 MMX_API void
-xp_translate(float *r, const float *plane, const float *translation)
+xplane_translate(float *r, const float *plane, const float *translation)
 {
     r[0] = plane[0];
     r[1] = plane[1];
@@ -1860,20 +1920,20 @@ xp_translate(float *r, const float *plane, const float *translation)
 }
 
 MMX_API void
-xp_translateq(float *r, const float *translation)
+xplane_translateq(float *r, const float *translation)
 {
     r[3] -= xv_dot(translation, r, 3);
 }
 
 MMX_API void
-xp_rotate(float *r, const float *plane, const float *origin, const float *axis)
+xplane_rotate(float *r, const float *plane, const float *origin, const float *axis)
 {
     xm3_transform(r, axis, plane);
     r[3] = plane[3] + xv_dot(origin, plane,3) - xv_dot(origin, r, 3);
 }
 
 MMX_API void
-xp_rotate_self(float *r, const float *origin, const float *axis)
+xplane_rotate_self(float *r, const float *origin, const float *axis)
 {
     float t[3];
     r[3] += xv_dot(origin, r, 3);
@@ -1883,7 +1943,7 @@ xp_rotate_self(float *r, const float *origin, const float *axis)
 }
 
 MMX_API float
-xp_norm(float *r, const float *p)
+xplane_norm(float *r, const float *p)
 {
     float len = 0;
     xv_norm_len(len, r, p, 3);
@@ -1892,7 +1952,7 @@ xp_norm(float *r, const float *p)
 }
 
 MMX_API float
-xp_norm_self(float *r)
+xplane_norm_self(float *r)
 {
     float len = 0;
     xv_normeq_len(len, r, 3);
@@ -1900,24 +1960,24 @@ xp_norm_self(float *r)
 }
 
 MMX_API float
-xp_distance(const float *p, const float *v3)
+xplane_distance(const float *p, const float *v3)
 {
     return xv_dot(p,v3,3) + p[3];
 }
 
 MMX_API int
-xp_side(const float *p, const float *v3, float epsilon)
+xplane_side(const float *p, const float *v3, float epsilon)
 {
-    float dist = xp_distance(p, v3);
+    float dist = xplane_distance(p, v3);
     if (dist > epsilon)
-        return XP_FRONT;
+        return XPLANE_FRONT;
     else if (dist < -epsilon)
-        return XP_BACK;
-    else return XP_ON;
+        return XPLANE_BACK;
+    else return XPLANE_ON;
 }
 
 MMX_API int
-xp_intersect_line(const float *p, const float *start, const float *end)
+xplane_intersect_line(const float *p, const float *start, const float *end)
 {
     float d1, d2, fraction;
     d1 = xv_dot(p, start, 3) + p[3];
@@ -1932,7 +1992,7 @@ xp_intersect_line(const float *p, const float *start, const float *end)
 }
 
 MMX_API int
-xp_intersect_ray(float *scale, const float *p, const float *start, const float *dir)
+xplane_intersect_ray(float *scale, const float *p, const float *start, const float *dir)
 {
     float d1, d2;
     d1 = xv_dot(p, start, 3) + p[0];
@@ -1943,7 +2003,7 @@ xp_intersect_ray(float *scale, const float *p, const float *start, const float *
 }
 
 MMX_API int
-xp_intersect_plane(float *start, float *dir, const float *p0, const float *p1)
+xplane_intersect_plane(float *start, float *dir, const float *p0, const float *p1)
 {
     float t0[3], t1[3];
     float n00, n01, n11, det, invDet, f0, f1;
@@ -1972,7 +2032,7 @@ xp_intersect_plane(float *start, float *dir, const float *p0, const float *p1)
  *
  * ---------------------------------------------------------------*/
 MMX_API void
-xs_make(float *s, const float *origin, float radius)
+xsphere_make(float *s, const float *origin, float radius)
 {
     s[0] = origin[0];
     s[1] = origin[1];
@@ -1981,7 +2041,7 @@ xs_make(float *s, const float *origin, float radius)
 }
 
 MMX_API int
-xs_add_point(float *s, const float *p)
+xsphere_add_point(float *s, const float *p)
 {
     float r, t[3];
     xv_sub(t, p, s, 3);
@@ -1997,7 +2057,7 @@ xs_add_point(float *s, const float *p)
 }
 
 MMX_API int
-xs_add_sphere(float *s0, const float *s1)
+xsphere_add_sphere(float *s0, const float *s1)
 {
     float r;
     float t[3];
@@ -2014,32 +2074,32 @@ xs_add_sphere(float *s0, const float *s1)
 }
 
 MMX_API void
-xs_expand(float *r, const float *s, float d)
+xsphere_expand(float *r, const float *s, float d)
 {
     r[0] = s[0]; r[1] = s[1]; r[2] = s[2]; r[3] = s[3] + d;
 }
 
 MMX_API void
-xs_expand_self(float *s, float d)
+xsphere_expand_self(float *s, float d)
 {
     s[3] = s[3] + d;
 }
 
 MMX_API void
-xs_translate(float *r, const float *s, const float *t)
+xsphere_translate(float *r, const float *s, const float *t)
 {
     r[3] = s[3];
     xv_add(r, s, t, 3);
 }
 
 MMX_API void
-xs_translate_self(float *r, const float *t)
+xsphere_translate_self(float *r, const float *t)
 {
     xv_addeq(r, t, 3);
 }
 
 MMX_API int
-xs_contains_point(const float *s, const float *p)
+xsphere_contains_point(const float *s, const float *p)
 {
     float t[3];
     xv_sub(t, p, s, 3);
@@ -2049,7 +2109,7 @@ xs_contains_point(const float *s, const float *p)
 }
 
 MMX_API int
-xs_intersects_sphere(const float *s1, const float *s2)
+xsphere_intersects_sphere(const float *s1, const float *s2)
 {
     float t[3];
     float r = s2[3] * s1[3];
@@ -2060,9 +2120,9 @@ xs_intersects_sphere(const float *s1, const float *s2)
 }
 
 MMX_API float
-xs_plane_distance(const float *s, const float *p)
+xsphere_plane_distance(const float *s, const float *p)
 {
-    float d = xp_distance(p, s);
+    float d = xplane_distance(p, s);
     if (d > s[3])
         return d - s[3];
     if (d < -s[3])
@@ -2071,18 +2131,18 @@ xs_plane_distance(const float *s, const float *p)
 }
 
 MMX_API int
-xs_plane_side(const float *s, const float *p, float epsilon)
+xsphere_plane_side(const float *s, const float *p, float epsilon)
 {
-    float d = xp_distance(p, s);
+    float d = xplane_distance(p, s);
     if (d > (s[3] + epsilon))
-        return XP_FRONT;
+        return XPLANE_FRONT;
     if (d < (-s[3] - epsilon))
-        return XP_BACK;
-    return XP_CROSS;
+        return XPLANE_BACK;
+    return XPLANE_CROSS;
 }
 
 MMX_API int
-xs_intersects_line(const float *sphere, const float *start, const float *end)
+xsphere_intersects_line(const float *sphere, const float *start, const float *end)
 {
     float a, x;
     float r[3], s[3], e[3], t[3];
@@ -2103,7 +2163,7 @@ xs_intersects_line(const float *sphere, const float *start, const float *end)
 }
 
 MMX_API int
-xs_intersects_ray(float *scale0, float *scale1, const float *s,
+xsphere_intersects_ray(float *scale0, float *scale1, const float *s,
     const float *start, const float *dir)
 {
     float p[3];
@@ -2125,7 +2185,7 @@ xs_intersects_ray(float *scale0, float *scale1, const float *s,
 }
 
 MMX_API void
-xs_from_box(float *sphere, const float *box)
+xsphere_from_box(float *sphere, const float *box)
 {
     float t[3];
     xv_add(sphere, box, &box[3], 3);
@@ -2140,21 +2200,21 @@ xs_from_box(float *sphere, const float *box)
  *
  * ---------------------------------------------------------------*/
 MMX_API void
-xb_make(float *b, const float *min, const float *max)
+xbox_make(float *b, const float *min, const float *max)
 {
     b[0] = min[0]; b[1] = min[1]; b[2] = min[2];
     b[3] = max[0]; b[4] = max[1]; b[5] = max[2];
 }
 
 MMX_API void
-xb_center(float *center, const float *box)
+xbox_center(float *center, const float *box)
 {
     xv_add(center, box, &box[3], 3);
     xv_mulieq(center, 0.5f, 3);
 }
 
 MMX_API void
-xb_radius(float *radius, const float *b)
+xbox_radius(float *radius, const float *b)
 {
     int i;
     float total, b0, b1;
@@ -2170,7 +2230,7 @@ xb_radius(float *radius, const float *b)
 }
 
 MMX_API void
-xb_from_points(float *b, const void *verts, int num, int stride, int offset)
+xbox_from_points(float *b, const void *verts, int num, int stride, int offset)
 {
     int i = 0;
     const float *vert;
@@ -2178,7 +2238,7 @@ xb_from_points(float *b, const void *verts, int num, int stride, int offset)
 
     data += offset;
     vert = (const float*)(const void*)data;
-    xb_make(b, vert, vert);
+    xbox_make(b, vert, vert);
     data += stride;
     for (i = 0; i < num; ++i) {
         vert = (const float*)(const void*)data;
@@ -2194,7 +2254,7 @@ xb_from_points(float *b, const void *verts, int num, int stride, int offset)
 }
 
 MMX_API int
-xb_add_point(float *b, const float *point)
+xbox_add_point(float *b, const float *point)
 {
     int expanded = 0;
     if (point[0] < b[0]) {
@@ -2225,7 +2285,7 @@ xb_add_point(float *b, const float *point)
 }
 
 MMX_API int
-xb_add_box(float *b, const float *box)
+xbox_add_box(float *b, const float *box)
 {
     int expanded = 0;
     if (box[0] < b[0]) {
@@ -2256,7 +2316,7 @@ xb_add_box(float *b, const float *box)
 }
 
 MMX_API void
-xb_intersection(float *r, const float *a, const float *b)
+xbox_intersection(float *r, const float *a, const float *b)
 {
     r[0] = (b[0] > a[0]) ? b[0] : a[0];
     r[1] = (b[1] > a[1]) ? b[1] : a[1];
@@ -2267,7 +2327,7 @@ xb_intersection(float *r, const float *a, const float *b)
 }
 
 MMX_API void
-xb_intersection_self(float *r, const float *b)
+xbox_intersection_self(float *r, const float *b)
 {
     if (b[0] > r[0]) r[0] = b[0];
     if (b[1] > r[1]) r[1] = b[1];
@@ -2278,7 +2338,7 @@ xb_intersection_self(float *r, const float *b)
 }
 
 MMX_API void
-xb_expand(float *r, const float *b, float d)
+xbox_expand(float *r, const float *b, float d)
 {
     r[0] = b[0] - d;
     r[1] = b[1] - d;
@@ -2289,7 +2349,7 @@ xb_expand(float *r, const float *b, float d)
 }
 
 MMX_API void
-xb_expand_self(float *b, float d)
+xbox_expand_self(float *b, float d)
 {
     b[0] -= d;
     b[1] -= d;
@@ -2300,21 +2360,21 @@ xb_expand_self(float *b, float d)
 }
 
 MMX_API void
-xb_translate(float *r, const float *b, const float *t)
+xbox_translate(float *r, const float *b, const float *t)
 {
     xv_add(r, b, t, 3);
     xv_add(&r[3], &b[3], t, 3);
 }
 
 MMX_API void
-xb_translate_self(float *r, const float *t)
+xbox_translate_self(float *r, const float *t)
 {
     xv_addeq(r, t, 3);
     xv_addeq(&r[3], t, 3);
 }
 
 MMX_API void
-xb_transform(float *r, const float *box, const float *origin, const float *axis)
+xbox_transform(float *r, const float *box, const float *origin, const float *axis)
 {
     int i;
     float t[3];
@@ -2339,21 +2399,21 @@ xb_transform(float *r, const float *box, const float *origin, const float *axis)
 }
 
 MMX_API void
-xb_rotate(float *r, const float *b, const float *mat33)
+xbox_rotate(float *r, const float *b, const float *mat33)
 {
     const MMX_STORAGE float origin[] = {0,0,0};
-    xb_transform(r, b, origin, mat33);
+    xbox_transform(r, b, origin, mat33);
 }
 
 MMX_API void
-xb_rotate_self(float *r, const float *mat33)
+xbox_rotate_self(float *r, const float *mat33)
 {
     const MMX_STORAGE float origin[] = {0,0,0};
-    xb_transform(r, r, origin, mat33);
+    xbox_transform(r, r, origin, mat33);
 }
 
 MMX_API int
-xb_contains_point(const float *b, const float *p)
+xbox_contains_point(const float *b, const float *p)
 {
     if (p[0] < b[0] || p[1] < b[1] || p[2] < b[2] ||
         p[0] > b[3] || p[1] > b[4] || p[2] > b[5])
@@ -2362,7 +2422,7 @@ xb_contains_point(const float *b, const float *p)
 }
 
 MMX_API float
-xb_plane_distance(const float *box, const float *p)
+xbox_plane_distance(const float *box, const float *p)
 {
     float center[3];
     float d1,d2;
@@ -2370,7 +2430,7 @@ xb_plane_distance(const float *box, const float *p)
     xv_add(center, box, &box[3], 3);
     xv_mulieq(center, 0.5f, 3);
 
-    d1 = xp_distance(p, center);
+    d1 = xplane_distance(p, center);
     d2 = (float)(MMX_FABS((box[3] - center[0]) * p[0]) +
         MMX_FABS((box[4] - center[1]) * p[1]) +
         MMX_FABS((box[5] - center[2]) * p[2]));
@@ -2383,7 +2443,7 @@ xb_plane_distance(const float *box, const float *p)
 }
 
 MMX_API int
-xb_plane_side(const float *s, const float *p, float epsilon)
+xbox_plane_side(const float *s, const float *p, float epsilon)
 {
     float center[3];
     float d1,d2;
@@ -2391,20 +2451,20 @@ xb_plane_side(const float *s, const float *p, float epsilon)
     xv_add(center, s, &s[3], 3);
     xv_mulieq(center, 0.5f, 3);
 
-    d1 = xp_distance(p, center);
+    d1 = xplane_distance(p, center);
     d2 = (float)(MMX_FABS((s[3] - center[0]) * p[0]) +
         MMX_FABS((s[4] - center[1]) * p[1]) +
         MMX_FABS((s[5] - center[2]) * p[2]));
 
     if ((d1 - d2) > epsilon)
-        return XP_FRONT;
+        return XPLANE_FRONT;
     if ((d1 + d2) < 0.0f)
-        return XP_BACK;
-    return XP_CROSS;
+        return XPLANE_BACK;
+    return XPLANE_CROSS;
 }
 
 MMX_API int
-xb_intersects_box(const float *a, const float *b)
+xbox_intersects_box(const float *a, const float *b)
 {
     if (b[3] < a[0] || b[4] < a[1] || b[5] < a[2] ||
         b[0] > a[3] || b[1] > a[4] || b[2] > a[5])
@@ -2413,7 +2473,7 @@ xb_intersects_box(const float *a, const float *b)
 }
 
 MMX_API int
-xb_intersects_line(const float *box, const float *start, const float *end)
+xbox_intersects_line(const float *box, const float *start, const float *end)
 {
     float ld[3];
     float center[3];
@@ -2456,7 +2516,7 @@ xb_intersects_line(const float *box, const float *start, const float *end)
 }
 
 MMX_API int
-xb_intersects_ray(float *scale, const float *b, const float *start, const float *dir)
+xbox_intersects_ray(float *scale, const float *b, const float *start, const float *dir)
 {
     float f;
     int i, ax0, ax1, ax2, side, inside;

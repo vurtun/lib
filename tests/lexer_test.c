@@ -1,6 +1,6 @@
-#define MML_USE_FIXED_TYPES
-#define MML_USE_ASSERT
-#define MML_IMPLEMENTATION
+#define MM_LEXER_USE_FIXED_TYPES
+#define MM_LEXER_USE_ASSERT
+#define MM_LEXER_IMPLEMENTATION
 #include "../mm_lexer.h"
 
 #include <stdio.h>
@@ -35,16 +35,16 @@
 #define test_token(t, content, types, subtypes)\
     {test_assert((t)->type == types);\
      test_assert(((t)->subtype & subtypes) == subtypes);\
-     test_assert(!mml_token_cmp((t), content));}
+     test_assert(!mm_lexer_token_cmp((t), content));}
 
 static void
-test_log(void *pArg, enum mml_log_level type, mml_size line, const char *fmt, ...)
+test_log(void *pArg, enum mm_lexer_log_level type, mm_lexer_size line, const char *fmt, ...)
 {
     char buffer[1024];
     va_list arglist;
     (void)pArg;
     va_start(arglist, fmt);
-    printf("%s(%lu):  ", (type == MML_WARNING) ? "Warning" : "Error", line);
+    printf("%s(%lu):  ", (type == MM_LEXER_WARNING) ? "Warning" : "Error", line);
     vprintf(fmt, arglist);
     va_end(arglist);
 }
@@ -57,169 +57,169 @@ int main(void)
     test_section("name")
     {
         const char text[] = "name";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "name", MML_TOKEN_NAME, 0);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "name", MM_LEXER_TOKEN_NAME, 0);
     }
 
     test_section("int")
     {
         const char text[] = "47845";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "47845", MML_TOKEN_NUMBER, (MML_TOKEN_DEC|MML_TOKEN_INT));
-        test_assert(mml_token_to_int(&tok) == 47845);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "47845", MM_LEXER_TOKEN_NUMBER, (MM_LEXER_TOKEN_DEC|MM_LEXER_TOKEN_INT));
+        test_assert(mm_lexer_token_to_int(&tok) == 47845);
     }
 
     test_section("hex")
     {
         const char text[] = "0xDEADBEEF";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "0xDEADBEEF", MML_TOKEN_NUMBER, MML_TOKEN_HEX);
-        test_assert(mml_token_to_unsigned_long(&tok) == 3735928559);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "0xDEADBEEF", MM_LEXER_TOKEN_NUMBER, MM_LEXER_TOKEN_HEX);
+        test_assert(mm_lexer_token_to_unsigned_long(&tok) == 3735928559);
     }
 
     test_section("oct")
     {
         const char text[] = "013471";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "013471", MML_TOKEN_NUMBER, MML_TOKEN_OCT);
-        test_assert(mml_token_to_int(&tok) == 5945);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "013471", MM_LEXER_TOKEN_NUMBER, MM_LEXER_TOKEN_OCT);
+        test_assert(mm_lexer_token_to_int(&tok) == 5945);
     }
 
     test_section("bin")
     {
         const char text[] = "0b10";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "0b10", MML_TOKEN_NUMBER, MML_TOKEN_BIN);
-        test_assert(mml_token_to_int(&tok) == 2);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "0b10", MM_LEXER_TOKEN_NUMBER, MM_LEXER_TOKEN_BIN);
+        test_assert(mm_lexer_token_to_int(&tok) == 2);
     }
 
     test_section("float")
     {
         float value;
         const char text[] = "5684.675f";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "5684.675", MML_TOKEN_NUMBER, 0);
-        value = mml_token_to_float(&tok);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "5684.675", MM_LEXER_TOKEN_NUMBER, 0);
+        value = mm_lexer_token_to_float(&tok);
         test_assert(value >= 5684.675f && value <= 5684.676f);
     }
 
     test_section("double")
     {
         const char text[] = "0.544";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "0.544", MML_TOKEN_NUMBER, (MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC));
-        test_assert(mml_token_to_double(&tok) == 0.544);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "0.544", MM_LEXER_TOKEN_NUMBER, (MM_LEXER_TOKEN_FLOAT|MM_LEXER_TOKEN_DOUBLE_PREC));
+        test_assert(mm_lexer_token_to_double(&tok) == 0.544);
     }
 
     test_section("neg_int")
     {
         const char text[] = "-23957";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "-", MML_TOKEN_PUNCTUATION, MML_PUNCT_SUB);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "23957", MML_TOKEN_NUMBER, 0);
-        test_assert((-mml_token_to_int(&tok)) == -23957);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "-", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SUB);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "23957", MM_LEXER_TOKEN_NUMBER, 0);
+        test_assert((-mm_lexer_token_to_int(&tok)) == -23957);
     }
 
     test_section("neg_float")
     {
         const char text[] = "-1.845f";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "-", MML_TOKEN_PUNCTUATION, MML_PUNCT_SUB);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "1.845", MML_TOKEN_NUMBER, 0);
-        test_assert((-mml_token_to_float(&tok)) == -1.845f);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "-", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SUB);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "1.845", MM_LEXER_TOKEN_NUMBER, 0);
+        test_assert((-mm_lexer_token_to_float(&tok)) == -1.845f);
     }
 
     test_section("neg_double")
     {
         const char text[] = "-34356.4384";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "-", MML_TOKEN_PUNCTUATION, MML_PUNCT_SUB);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "34356.4384", MML_TOKEN_NUMBER, (MML_TOKEN_FLOAT|MML_TOKEN_DOUBLE_PREC));
-        test_assert((-mml_token_to_double(&tok)) == -34356.4384);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "-", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SUB);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "34356.4384", MM_LEXER_TOKEN_NUMBER, (MM_LEXER_TOKEN_FLOAT|MM_LEXER_TOKEN_DOUBLE_PREC));
+        test_assert((-mm_lexer_token_to_double(&tok)) == -34356.4384);
     }
 
     test_section("string")
     {
         const char text[] = "\"string\"";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "string", MML_TOKEN_STRING, 0);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "string", MM_LEXER_TOKEN_STRING, 0);
     }
 
     test_section("whitespace")
     {
         const char text[] = "  \t     register";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "register", MML_TOKEN_NAME, 0);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "register", MM_LEXER_TOKEN_NAME, 0);
     }
 
     test_section("code_decl")
     {
         const char text[] = "\t\nconst char\t*text = \"test\";\n";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "const", MML_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "const", MM_LEXER_TOKEN_NAME, 0);
         test_assert(tok.line == 2);
         test_assert(tok.line_crossed == 1);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "char", MML_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "char", MM_LEXER_TOKEN_NAME, 0);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "*", MML_TOKEN_PUNCTUATION, MML_PUNCT_MUL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "*", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_MUL);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "text", MML_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "text", MM_LEXER_TOKEN_NAME, 0);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "=", MML_TOKEN_PUNCTUATION, MML_PUNCT_ASSIGN);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "=", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_ASSIGN);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "test", MML_TOKEN_STRING, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "test", MM_LEXER_TOKEN_STRING, 0);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, ";", MML_TOKEN_PUNCTUATION, MML_PUNCT_SEMICOLON);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, ";", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SEMICOLON);
     }
 
     test_section("struct")
@@ -229,34 +229,34 @@ int main(void)
             "   int version;"
             "   char *name;"
             "};";
-        struct mml_token tok;
-        struct mml_lexer lexer;
-        mml_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        struct mm_lexer_token tok;
+        struct mm_lexer_lexer lexer;
+        mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
 
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "struct", MML_TOKEN_NAME, 0);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "device", MML_TOKEN_NAME, 0);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "{", MML_TOKEN_PUNCTUATION, MML_PUNCT_BRACE_OPEN);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "int", MML_TOKEN_NAME, 0);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "version", MML_TOKEN_NAME, 0);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, ";", MML_TOKEN_PUNCTUATION, MML_PUNCT_SEMICOLON);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "char", MML_TOKEN_NAME, 0);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "*", MML_TOKEN_PUNCTUATION, MML_PUNCT_MUL);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "name", MML_TOKEN_NAME, 0);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, ";", MML_TOKEN_PUNCTUATION, MML_PUNCT_SEMICOLON);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, "}", MML_TOKEN_PUNCTUATION, MML_PUNCT_BRACE_CLOSE);
-        test_assert(mml_read(&lexer, &tok));
-        test_token(&tok, ";", MML_TOKEN_PUNCTUATION, MML_PUNCT_SEMICOLON);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "struct", MM_LEXER_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "device", MM_LEXER_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "{", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_BRACE_OPEN);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "int", MM_LEXER_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "version", MM_LEXER_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, ";", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SEMICOLON);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "char", MM_LEXER_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "*", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_MUL);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "name", MM_LEXER_TOKEN_NAME, 0);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, ";", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SEMICOLON);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, "}", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_BRACE_CLOSE);
+        test_assert(mm_lexer_read(&lexer, &tok));
+        test_token(&tok, ";", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SEMICOLON);
     }
     test_result();
     exit(EXIT_SUCCESS);

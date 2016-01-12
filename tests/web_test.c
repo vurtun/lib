@@ -26,10 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MMW_STATIC
-#define MMW_IMPLEMENTATION
-#define MMW_USE_FIXED_TYPES
-#define MMW_USE_ASSERT
+#define MM_WBY_STATIC
+#define MM_WBY_IMPLEMENTATION
+#define MM_WBY_USE_FIXED_TYPES
+#define MM_WBY_USE_ASSERT
 #include "../mm_web.h"
 
 #ifdef _WIN32
@@ -44,7 +44,7 @@
 struct server_state {
     int quit;
     unsigned frame_counter;
-    struct mmw_con *conn[MAX_WSCONN];
+    struct mm_wby_con *conn[MAX_WSCONN];
     int conn_count;
 };
 
@@ -72,31 +72,31 @@ test_log(const char* text)
 }
 
 static int
-dispatch(struct mmw_con *connection, void *userdata)
+dispatch(struct mm_wby_con *connection, void *userdata)
 {
     struct server_state *state = (struct server_state*)userdata;
     if (!strcmp("/foo", connection->request.uri)) {
-        mmw_response_begin(connection, 200, 14, NULL, 0);
-        mmw_write(connection, "Hello, world!\n", 14);
-        mmw_response_end(connection);
+        mm_wby_response_begin(connection, 200, 14, NULL, 0);
+        mm_wby_write(connection, "Hello, world!\n", 14);
+        mm_wby_response_end(connection);
         return 0;
     } else if (!strcmp("/bar", connection->request.uri)) {
-        mmw_response_begin(connection, 200, -1, NULL, 0);
-        mmw_write(connection, "Hello, world!\n", 14);
-        mmw_write(connection, "Hello, world?\n", 14);
-        mmw_response_end(connection);
+        mm_wby_response_begin(connection, 200, -1, NULL, 0);
+        mm_wby_write(connection, "Hello, world!\n", 14);
+        mm_wby_write(connection, "Hello, world?\n", 14);
+        mm_wby_response_end(connection);
         return 0;
     } else if (!strcmp("/quit", connection->request.uri)) {
-        mmw_response_begin(connection, 200, -1, NULL, 0);
-        mmw_write(connection, "Goodbye, cruel world\n", 22);
-        mmw_response_end(connection);
+        mm_wby_response_begin(connection, 200, -1, NULL, 0);
+        mm_wby_write(connection, "Goodbye, cruel world\n", 22);
+        mm_wby_response_end(connection);
         state->quit = 1;
         return 0;
     } else return 1;
 }
 
 static int
-websocket_connect(struct mmw_con *connection, void *userdata)
+websocket_connect(struct mm_wby_con *connection, void *userdata)
 {
     /* Allow websocket upgrades on /wstest */
     struct server_state *state = (struct server_state*)userdata;
@@ -108,7 +108,7 @@ websocket_connect(struct mmw_con *connection, void *userdata)
 }
 
 static void
-websocket_connected(struct mmw_con *connection, void *userdata)
+websocket_connected(struct mm_wby_con *connection, void *userdata)
 {
     struct server_state *state = (struct server_state*)userdata;
     printf("WebSocket connected\n");
@@ -116,13 +116,13 @@ websocket_connected(struct mmw_con *connection, void *userdata)
 }
 
 static int
-websocket_frame(struct mmw_con *connection, const struct mmw_frame *frame, void *userdata)
+websocket_frame(struct mm_wby_con *connection, const struct mm_wby_frame *frame, void *userdata)
 {
     int i = 0;
     printf("WebSocket frame incoming\n");
     printf("  Frame OpCode: %d\n", frame->opcode);
-    printf("  Final frame?: %s\n", (frame->flags & MMW_WSF_FIN) ? "yes" : "no");
-    printf("  Masked?     : %s\n", (frame->flags & MMW_WSF_MASKED) ? "yes" : "no");
+    printf("  Final frame?: %s\n", (frame->flags & MM_WBY_WSF_FIN) ? "yes" : "no");
+    printf("  Masked?     : %s\n", (frame->flags & MM_WBY_WSF_MASKED) ? "yes" : "no");
     printf("  Data Length : %d\n", (int) frame->payload_length);
     while (i < frame->payload_length) {
         unsigned char buffer[16];
@@ -131,7 +131,7 @@ websocket_frame(struct mmw_con *connection, const struct mmw_frame *frame, void 
         size_t k;
 
         printf("%08x ", (int) i);
-        if (0 != mmw_read(connection, buffer, read_size))
+        if (0 != mm_wby_read(connection, buffer, read_size))
             break;
         for (k = 0; k < read_size; ++k)
             printf("%02x ", buffer[k]);
@@ -147,7 +147,7 @@ websocket_frame(struct mmw_con *connection, const struct mmw_frame *frame, void 
 }
 
 static void
-websocket_closed(struct mmw_con *connection, void *userdata)
+websocket_closed(struct mm_wby_con *connection, void *userdata)
 {
     int i;
     struct server_state *state = (struct server_state*)userdata;
@@ -155,7 +155,7 @@ websocket_closed(struct mmw_con *connection, void *userdata)
     for (i = 0; i < state->conn_count; i++) {
         if (state->conn[i] == connection) {
             int remain = state->conn_count - i;
-            memmove(state->conn + i, state->conn + i + 1, (size_t)remain * sizeof(struct mmw_con*));
+            memmove(state->conn + i, state->conn + i + 1, (size_t)remain * sizeof(struct mm_wby_con*));
             --state->conn_count;
             break;
         }
@@ -166,11 +166,11 @@ int
 main(void)
 {
     void *memory = NULL;
-    mmw_size needed_memory = 0;
+    mm_wby_size needed_memory = 0;
     struct server_state state;
-    struct mmw_server server;
+    struct mm_wby_server server;
 
-    struct mmw_config config;
+    struct mm_wby_config config;
     memset(&config, 0, sizeof config);
     config.userdata = &state;
     config.address = "127.0.0.1";
@@ -194,26 +194,26 @@ main(void)
     }}
 #endif
 
-    mmw_server_init(&server, &config, &needed_memory);
+    mm_wby_server_init(&server, &config, &needed_memory);
     memory = calloc(needed_memory, 1);
-    mmw_server_start(&server, memory);
+    mm_wby_server_start(&server, memory);
 
     memset(&state, 0, sizeof state);
     while (!state.quit) {
         int i = 0;
-        mmw_server_update(&server);
+        mm_wby_server_update(&server);
         /* Push some test data over websockets */
         if (!(state.frame_counter & 0x7f)) {
             for (i = 0; i < state.conn_count; ++i) {
-                mmw_frame_begin(state.conn[i], MMW_WSOP_TEXT_FRAME);
-                mmw_write(state.conn[i], "Hello world over websockets!\n", 29);
-                mmw_frame_end(state.conn[i]);
+                mm_wby_frame_begin(state.conn[i], MM_WBY_WSOP_TEXT_FRAME);
+                mm_wby_write(state.conn[i], "Hello world over websockets!\n", 29);
+                mm_wby_frame_end(state.conn[i]);
             }
         }
         sleep_for(30);
         ++state.frame_counter;
     }
-    mmw_server_stop(&server);
+    mm_wby_server_stop(&server);
     free(memory);
 #if defined(_WIN32)
     WSACleanup();
