@@ -407,7 +407,7 @@ MMX_API void xq_rotation_from_to(float *quat, const float *from_vec3, const floa
 MMX_API void xq_transform(float *out, const float *q, const float *v);
 MMX_API void xq_mul(float *out, const float *a, const float *b);
 MMX_API void xq_integrate2D(float *out, const float *q, float *omega, float delta);
-MMX_API void xq_integrate3D(float *out, const float *q, float *omega, float delta);
+MMX_API void xq_integrate3D(float *out, const float *q, float *omega3, float delta);
 MMX_API float xq_invert(float *out, const float *in);
 MMX_API float xq_inverteq(float *self);
 MMX_API float xq_get_rotation(float *axis_output, const float *quat);
@@ -1818,27 +1818,23 @@ MMX_API void
 xq_integrate3D(float *r, const float *q, float *omega, float delta)
 {
     float magsqr, s;
-    float theta[4];
-    float t[4] = {0,0,0,0};
+    float deltaQ[4] = {0,0,0,1};
+    float theta[3] = {0,0,0};
 
-    theta[0] = omega[0];
-    theta[1] = omega[1];
-    theta[2] = omega[2];
-    theta[3] = delta * 0.5f;
-
-    magsqr = xv_len2(theta, 4);
+    xv_muli(theta, omega, delta * 0.5f, 3);
+    magsqr = xv_len2(theta, 3);
     if (((magsqr * magsqr) / 24.0f) < 0.000001) {
-        t[3] = 1.0f - magsqr * 0.5f;
+        deltaQ[3] = 1.0f - magsqr * 0.5f;
         s = 1.0f - magsqr / 6.0f;
     } else {
         float mag = (float)MMX_SQRT(magsqr);
-        t[3] = (float)MMX_COS(mag);
+        deltaQ[3] = (float)MMX_COS(mag);
         s = (float)MMX_SIN(mag) / mag;
     }
-    t[0] = theta[0] * s;
-    t[1] = theta[1] * s;
-    t[2] = theta[2] * s;
-    xq_mul(r, t, q);
+    deltaQ[0] = theta[0] * s;
+    deltaQ[1] = theta[1] * s;
+    deltaQ[2] = theta[2] * s;
+    xq_mul(r, deltaQ, q);
 }
 
 MMX_API void
