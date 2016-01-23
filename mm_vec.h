@@ -402,7 +402,8 @@ MMX_API void xm4_from_mat3(float *out, const float *matrix3);
 #define xq_set(q, x,y,z,w) xv4_set(q,x,y,z,w)
 #define xq_cpy(to, from) xv4_cpy(to,from)
 MMX_API void xq_from_mat3(float *quat, const float *mat3);
-MMX_API void xq_rotation(float *quat, float angle, float x, float y, float z);
+MMX_API void xq_rotation(float *quat, float angle, const float *vec3_axis);
+MMX_API void xq_rotationf(float *quat, float angle, float x, float y, float z);
 MMX_API void xq_rotation_from_to(float *quat, const float *from_vec3, const float *to_vec3);
 MMX_API void xq_transform(float *out, const float *q, const float *v);
 MMX_API void xq_mul(float *out, const float *a, const float *b);
@@ -411,6 +412,7 @@ MMX_API void xq_integrate3D(float *out, const float *q, float *omega3, float del
 MMX_API float xq_invert(float *out, const float *in);
 MMX_API float xq_inverteq(float *self);
 MMX_API float xq_get_rotation(float *axis_output, const float *quat);
+MMX_API float xq_get_rotation_in_axis(float *res, int axis, const float *q);
 #define xq_identity(q) (q)[0] = (q)[1] = (q)[2] = 0, (q)[3] = 1.0f
 #define xq_conjugate(t,f) ((t)[0] = -(f)[0],(t)[1] = -(f)[1],(t)[2] = -(f)[2], (t)[3] = (f)[3])
 #define xq_norm(o, q) xv_norm(o, q, 4)
@@ -1694,8 +1696,15 @@ xm4_from_mat3(float *r, const float *m)
  *                          QUATERNION
  *
  * ---------------------------------------------------------------*/
+
 MMX_API void
-xq_rotation(float *q, float angle, float x, float y, float z)
+xq_rotation(float *quat, float angle, const float *vec3_axis)
+{
+    xq_rotationf(quat, angle, vec3_axis[0], vec3_axis[1], vec3_axis[2]);
+}
+
+MMX_API void
+xq_rotationf(float *q, float angle, float x, float y, float z)
 {
    float radians = MMX_DEG2RAD(angle);
    float sinThetaDiv2 = (float)MMX_SIN(radians/2.0f);
@@ -1717,7 +1726,7 @@ xq_rotation_from_to(float *q, const float *u, const float *v)
             xv3_set(w, -u[1], u[0], 0.0f);
         else xv3_set(w, 0.0f, -u[2], u[1]);
     } else xv_cross(w, u , v, 3);
-    xq_rotation(q, real_part, w[0], w[1], w[2]);
+    xq_rotation(q, real_part, w);
     xq_normeq(q);
 }
 
@@ -1728,10 +1737,10 @@ xq_get_rotation(float *axis, const float *q)
     float sine = (float)MMX_SIN(angle);
     if (sine >= 0.00001f) {
         xv_muli(axis, q, 1.0f/sine,3);
-        return 2*angle;
+        return MMX_RAD2DEG(2.0f*angle);
     } else {
         float d = xq_len(q);
-        if (d > 0.000001) {
+        if (d > 0.000001f) {
             xv_muli(axis, q, 1.0f/d,3);
         } else {
             axis[0] = 1;
@@ -1739,6 +1748,30 @@ xq_get_rotation(float *axis, const float *q)
         }
     }
     return 0;
+}
+
+MMX_API float
+xq_get_rotation_in_axis(float *res, int axis, const float *q)
+{
+    float angle;
+    xq_cpy(res, q);
+    switch (axis) {
+    case XM_AXIS_X:
+        res[1] = 0.0f;
+        res[2] = 0.0f;
+        break;
+    case XM_AXIS_Y:
+        res[0] = 0.0f;
+        res[2] = 0.0f;
+        break;
+    case XM_AXIS_Z:
+        res[0] = 0.0f;
+        res[1] = 0.0f;
+        break;
+    }
+    xq_normeq(res);
+    angle = (float)MMX_ACOS(res[3]);
+    return MMX_RAD2DEG(angle*2.0f);
 }
 
 MMX_API void

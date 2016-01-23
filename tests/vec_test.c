@@ -721,9 +721,8 @@ test_quat(void)
         float q[4];
         struct xvec3 axis = XV3(0,1,0);
         float angle = 45.0f;
-        xq_rotation(q, 45.0f, axis.x, axis.y, axis.z);
+        xq_rotationf(q, 45.0f, axis.x, axis.y, axis.z);
         angle = xq_get_rotation(&axis.x, q);
-        angle = MMX_RAD2DEG(angle);
         xv_test_assert(axis.x == 0.0f);
         xv_test_assert(axis.y > 0.9999999f && axis.y <= 1.0f);
         xv_test_assert(axis.z == 0);
