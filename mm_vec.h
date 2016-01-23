@@ -44,6 +44,10 @@ DEFINES:
         You can define this to 'memcpy' or your own memset replacement.
         If not, mm_vec.h uses a naive (maybe inefficent) implementation.
 
+    MMX_USE_DEGREES
+        If this is set all angles inside the library, input as well as output,
+        will be in degrees. Otherwise every angle will be in RAD.
+
     MMX_SIN
     MMX_FABS
     MMX_COS
@@ -762,10 +766,15 @@ MMX_API float
 xv3_angle(float *axis, const float *a, const float *b)
 {
     float d;
+    float angle;
     xv_cross(axis, a, b, 3);
     xv_normeq(axis, 3);
     d = xv_dot(a, b, 3);
-    return (float)MMX_ACOS(MMX_CLAMP(-1.0f, d, 1.0f));
+    angle = (float)MMX_ACOS(MMX_CLAMP(-1.0f, d, 1.0f));
+#ifdef MMX_USE_DEGREES
+    angle = MMX_RAD2DEG(angle);
+#endif
+    return angle;
 }
 
 MMX_API void
@@ -959,8 +968,13 @@ MMX_API void
 xm2_rotate(float *m, float angle)
 {
     #define M(col, row) m[(col<<1)+row]
+#ifdef MMX_USE_DEGREES
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+#else
+    float s = (float)MMX_SIN(angle);
+    float c = (float)MMX_COS(angle));
+#endif
     if (angle >= 0) {
         M(0,0) =  c; M(0,1) = s;
         M(1,0) = -s; M(1,1) = c;
@@ -1042,8 +1056,13 @@ xm3_transpose(float *m)
 MMX_API void
 xm3_rotate_x(float *m, float angle)
 {
+#ifdef MMX_USE_DEGREES
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+#else
+    float s = (float)MMX_SIN(angle);
+    float c = (float)MMX_COS(angle);
+#endif
     #define M(col, row) m[(col*3)+row]
     M(0,0) = 1; M(0,1) = 0; M(0,2) = 0;
     M(1,0) = 0; M(1,1) = c; M(1,2) =-s;
@@ -1054,8 +1073,14 @@ xm3_rotate_x(float *m, float angle)
 MMX_API void
 xm3_rotate_y(float *m, float angle)
 {
+#ifdef MMX_USE_DEGREES
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+#else
+    float s = (float)MMX_SIN(angle);
+    float c = (float)MMX_COS(angle);
+#endif
+
     #define M(col, row) m[(col*3)+row]
     M(0,0) = c; M(0,1) = 0; M(0,2) = s;
     M(1,0) = 0; M(1,1) = 1; M(1,2) = 0;
@@ -1066,8 +1091,13 @@ xm3_rotate_y(float *m, float angle)
 MMX_API void
 xm3_rotate_z(float *m, float angle)
 {
+#ifdef MMX_USE_DEGREES
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+#else
+    float s = (float)MMX_SIN(angle);
+    float c = (float)MMX_COS(angle);
+#endif
     #define M(col, row) m[(col*3)+row]
     M(0,0) = c; M(0,1) =-s; M(0,2) = 0;
     M(1,0) = s; M(1,1) = c; M(1,2) = 0;
@@ -1090,8 +1120,13 @@ MMX_API void
 xm3_rotate(float *m, float angle, float X, float Y, float Z)
 {
     #define M(col, row) m[(col*3)+row]
+#ifdef MMX_USE_DEGREES
     float s = (float)MMX_SIN(MMX_DEG2RAD(angle));
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
+#else
+    float s = (float)MMX_SIN(angle);
+    float c = (float)MMX_COS(angle);
+#endif
     float oc = 1.0f - c;
     M(0,0) = oc * X * X + c;
     M(0,1) = oc * X * Y - Z * s;
@@ -1581,9 +1616,12 @@ xm4_ortho(float *m, float left, float right, float bottom, float top)
 MMX_API void
 xm4_persp(float *m, float fov, float aspect, float near, float far)
 {
+    float hfov;
     #define M(col, row) m[(col<<2)+row]
-    const float rad = MMX_DEG2RAD(fov);
-    const float hfov = (float)MMX_TAN(rad/2.0f);
+#ifdef MMX_USE_DEGREES
+    fov = MMX_DEG2RAD(fov);
+#endif
+    hfov = (float)MMX_TAN(fov/2.0f);
     xv_zero_array(m, 16);
     M(0,0) = 1.0f / (aspect * hfov);
     M(1,1) = 1.0f / hfov;
@@ -1706,12 +1744,15 @@ xq_rotation(float *quat, float angle, const float *vec3_axis)
 MMX_API void
 xq_rotationf(float *q, float angle, float x, float y, float z)
 {
-   float radians = MMX_DEG2RAD(angle);
-   float sinThetaDiv2 = (float)MMX_SIN(radians/2.0f);
+    float sinThetaDiv2;
+#ifdef MMX_USE_DEGREES
+   angle = MMX_DEG2RAD(angle);
+#endif
+   sinThetaDiv2 = (float)MMX_SIN(angle/2.0f);
    q[0] = x * sinThetaDiv2;
    q[1] = y * sinThetaDiv2;
    q[2] = z * sinThetaDiv2;
-   q[3] = (float)MMX_COS(radians/2.0f);
+   q[3] = (float)MMX_COS(angle/2.0f);
 }
 
 MMX_API void
@@ -1737,7 +1778,11 @@ xq_get_rotation(float *axis, const float *q)
     float sine = (float)MMX_SIN(angle);
     if (sine >= 0.00001f) {
         xv_muli(axis, q, 1.0f/sine,3);
-        return MMX_RAD2DEG(2.0f*angle);
+        angle = 2.0f * angle;
+#ifdef MMX_USE_DEGREES
+        angle = MMX_RAD2DEG(angle);
+#endif
+        return angle;
     } else {
         float d = xq_len(q);
         if (d > 0.000001f) {
@@ -1771,7 +1816,11 @@ xq_get_rotation_in_axis(float *res, int axis, const float *q)
     }
     xq_normeq(res);
     angle = (float)MMX_ACOS(res[3]);
-    return MMX_RAD2DEG(angle*2.0f);
+    angle = 2.0f * angle;
+#ifdef MMX_USE_DEGREES
+        angle = MMX_RAD2DEG(angle);
+#endif
+    return angle;
 }
 
 MMX_API void

@@ -1,5 +1,6 @@
 #define MMX_STATIC
 #define MMX_IMPLEMENTATION
+#define MMX_USE_DEGREES
 #include <math.h>
 #include "../mm_vec.h"
 #include <stdio.h>
