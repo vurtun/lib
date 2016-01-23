@@ -52,6 +52,7 @@ DEFINES:
     MMX_FABS
     MMX_COS
     MMX_TAN
+    MMX_ASIN
     MMX_ACOS
     MMX_ATAN2
     MMX_SQRT
@@ -406,6 +407,7 @@ MMX_API void xm4_from_mat3(float *out, const float *matrix3);
 #define xq_set(q, x,y,z,w) xv4_set(q,x,y,z,w)
 #define xq_cpy(to, from) xv4_cpy(to,from)
 MMX_API void xq_from_mat3(float *quat, const float *mat3);
+MMX_API void xq_from_euler(float *q, float pitch, float yaw, float roll);
 MMX_API void xq_rotation(float *quat, float angle, const float *vec3_axis);
 MMX_API void xq_rotationf(float *quat, float angle, float x, float y, float z);
 MMX_API void xq_rotation_from_to(float *quat, const float *from_vec3, const float *to_vec3);
@@ -417,6 +419,7 @@ MMX_API float xq_invert(float *out, const float *in);
 MMX_API float xq_inverteq(float *self);
 MMX_API float xq_get_rotation(float *axis_output, const float *quat);
 MMX_API float xq_get_rotation_in_axis(float *res, int axis, const float *q);
+MMX_API void xq_get_euler(float *pitch, float *yaw, float *roll, const float *quat);
 #define xq_identity(q) (q)[0] = (q)[1] = (q)[2] = 0, (q)[3] = 1.0f
 #define xq_conjugate(t,f) ((t)[0] = -(f)[0],(t)[1] = -(f)[1],(t)[2] = -(f)[2], (t)[3] = (f)[3])
 #define xq_norm(o, q) xv_norm(o, q, 4)
@@ -586,6 +589,10 @@ template<typename T> struct xv_alignof{struct Big {T x; char c;}; enum {
 
 #ifndef MMX_TAN
 #define MMX_TAN tan
+#endif
+
+#ifndef MMX_ASIN
+#define MMX_ASIN asin
 #endif
 
 #ifndef MMX_ACOS
@@ -1815,12 +1822,71 @@ xq_get_rotation_in_axis(float *res, int axis, const float *q)
         break;
     }
     xq_normeq(res);
-    angle = (float)MMX_ACOS(res[3]);
-    angle = 2.0f * angle;
+    angle = 2.0f * (float)MMX_ACOS(res[3]);
 #ifdef MMX_USE_DEGREES
-        angle = MMX_RAD2DEG(angle);
+    angle = MMX_RAD2DEG(angle);
 #endif
     return angle;
+}
+
+MMX_API void
+xq_from_euler(float *q, float pitch, float yaw, float roll)
+{
+    float c1,c2,c3;
+    float s1,s2,s3;
+    float c1c2, s1s2;
+
+#ifdef MMX_USE_DEGREES
+    pitch = MMX_DEG2RAD(pitch);
+    yaw = MMX_DEG2RAD(yaw);
+    roll = MMX_DEG2RAD(roll);
+#endif
+
+    c1 =(float)MMX_COS(yaw/2.0f);
+    s1 =(float)MMX_SIN(yaw/2.0f);
+    c2 =(float)MMX_COS(roll/2.0f);
+    s2 =(float)MMX_SIN(roll/2.0f);
+    c3 =(float)MMX_COS(pitch/2.0f);
+    s3 =(float)MMX_SIN(pitch/2.0f);
+
+    c1c2 = c1*c2;
+    s1s2 = s1*s2;
+
+    q[3] = c1c2*c3 - s1s2*s3;
+    q[0] = c1c2*s3 + s1s2*c3;
+    q[1] = s1*c2*c3 + c1*s2*s3;
+    q[2] = c1*s2*c3 - s1*c2*s3;
+}
+
+MMX_API void
+xq_get_euler(float *pitch, float *yaw, float *roll, const float *q)
+{
+    float sqw = q[3] * q[3];
+    float sqx = q[0] * q[0];
+    float sqy = q[1] * q[1];
+    float sqz = q[2] * q[2];
+    float unit = sqx + sqy + sqz + sqw;
+    float test = q[0]*q[1] + q[2]*q[3];
+    if (test > 0.499f*unit) {
+        *yaw = 2.0f * (float)MMX_ATAN2(q[0],q[3]);
+        *roll = MMX_PI/2.0f;
+        *pitch = 0;
+        return;
+    } else if (test < -0.499f*unit) {
+        *yaw = -2 * (float)MMX_ATAN2(q[0], q[3]);
+        *roll = -MMX_PI/2.0f;
+        *pitch = 0;
+        return;
+    }
+    *yaw = (float)MMX_ATAN2(2.0f*q[1]*q[3]-2.0f*q[0]*q[2], sqx - sqy - sqz + sqw);
+    *roll = (float)MMX_ASIN(2.0f*test/unit);
+    *pitch = (float)MMX_ATAN2(2.0f*q[0]*q[3]-2*q[1]*q[2], -sqx + sqy - sqz + sqw);
+
+#ifdef MMX_USE_DEGREES
+    *pitch = MMX_RAD2DEG(*pitch);
+    *yaw = MMX_RAD2DEG(*yaw);
+    *roll = MMX_RAD2DEG(*roll);
+#endif
 }
 
 MMX_API void
