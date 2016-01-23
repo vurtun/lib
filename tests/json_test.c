@@ -46,6 +46,8 @@ static int run_test(void)
 {
     int pass_count = 0;
     int fail_count = 0;
+
+
     test_section("str")
     {
         struct mm_json_iter iter;
@@ -229,6 +231,25 @@ static int run_test(void)
         test_assert(!mm_json_cmp(&pair.name, "alive"));
         test_assert(!mm_json_cmp(&pair.value, "true"));
         test_assert(pair.value.type == MM_JSON_TRUE);
+    }
+
+    test_section("array_root")
+    {
+        int i = 1;
+        mm_json_number num;
+        struct mm_json_token tok;
+        struct mm_json_iter iter;
+        struct mm_json_pair pair;
+
+        const mm_json_char buf[] = "[ 1.0, 2.0, 3.0, 4.0 ]";
+        iter = mm_json_begin(buf, sizeof(buf));
+        iter = mm_json_read(&tok, &iter);
+        while (iter.src) {
+            test_assert(mm_json_convert(&num, &tok) == MM_JSON_NUMBER);
+            test_assert((mm_json_number)i == num);
+            iter = mm_json_read(&tok, &iter);
+            i++;
+        }
     }
 
     test_section("array")
@@ -488,7 +509,73 @@ static int run_test(void)
         test_token(&toks[12], "b", MM_JSON_STRING, 0, 0);
         test_token(&toks[13], "0a1b2", MM_JSON_STRING, 0, 0);
         test_assert(read == 14);
+    }
 
+    test_section("load_array_root")
+    {
+        mm_json_size count = 0;
+        mm_json_size read = 0;
+        enum mm_json_status status;
+        struct mm_json_token toks[14];
+        const mm_json_char buf[] = "[ 1.0, 2.0, 3.0, 4.0 ]";
+
+        memset(toks, 0,  sizeof(toks));
+        count = mm_json_num(buf, sizeof(buf));
+        status = mm_json_load(toks, count, &read, buf, sizeof(buf));
+        test_assert(status == MM_JSON_OK);
+        test_token(&toks[0], "1.0", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[1], "2.0", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[2], "3.0", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[3], "4.0", MM_JSON_NUMBER, 0, 0);
+        test_assert(read == 4);
+    }
+
+    test_section("load_array")
+    {
+        mm_json_size count = 0;
+        mm_json_size read = 0;
+        enum mm_json_status status;
+        struct mm_json_token toks[14];
+        const mm_json_char buf[] = "[\"Extra close\"]]";
+
+        memset(toks, 0,  sizeof(toks));
+        count = mm_json_num(buf, sizeof(buf));
+        status = mm_json_load(toks, count, &read, buf, sizeof(buf));
+        test_assert(status == MM_JSON_OK);
+        test_token(&toks[0], "Extra close", MM_JSON_STRING, 0, 0);
+        test_assert(read == 1);
+    }
+
+
+    test_section("empty")
+    {
+        mm_json_size count = 0;
+        mm_json_size read = 0;
+        enum mm_json_status status;
+        struct mm_json_token toks[14];
+        const mm_json_char buf[] =
+            "{\"sub\":{\"a\": \"b\"}, \"list\":[1,2,3,4], \"a\":true, \"b\": \"0a1b2\"}";
+
+        memset(toks, 0,  sizeof(toks));
+        count = mm_json_num(buf, sizeof(buf));
+        test_assert(count == 14);
+        status = mm_json_load(toks, count, &read, buf, sizeof(buf));
+        test_assert(status == MM_JSON_OK);
+        test_token(&toks[0], "sub", MM_JSON_STRING, 0, 0);
+        test_token(&toks[1], "{\"a\": \"b\"}", MM_JSON_OBJECT, 1, 2);
+        test_token(&toks[2], "a", MM_JSON_STRING, 0, 0);
+        test_token(&toks[3], "b", MM_JSON_STRING, 0, 0);
+        test_token(&toks[4], "list", MM_JSON_STRING, 0, 0);
+        test_token(&toks[5], "[1,2,3,4]", MM_JSON_ARRAY, 4, 4);
+        test_token(&toks[6], "1", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[7], "2", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[8], "3", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[9], "4", MM_JSON_NUMBER, 0, 0);
+        test_token(&toks[10], "a", MM_JSON_STRING, 0, 0);
+        test_token(&toks[11], "true", MM_JSON_TRUE, 0, 0);
+        test_token(&toks[12], "b", MM_JSON_STRING, 0, 0);
+        test_token(&toks[13], "0a1b2", MM_JSON_STRING, 0, 0);
+        test_assert(read == 14);
     }
 
     test_section("query_simple")
