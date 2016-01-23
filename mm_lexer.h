@@ -373,7 +373,7 @@ MM_LEXER_API unsigned long mm_lexer_token_to_unsigned_long(struct mm_lexer_token
 enum mm_lexer_log_level {MM_LEXER_WARNING,MM_LEXER_ERROR};
 typedef void(*mm_lexer_log_f)(void*, enum mm_lexer_log_level, mm_lexer_size line, const char *msg, ...);
 
-struct mm_lexer_lexer {
+struct mm_lexer {
 /*  The lexer context holds the current state of the parsing process,
     and only refrences a string that actually holds the source text.
     To parse punctuations the lexer uses a punctuation table to map
@@ -406,7 +406,7 @@ struct mm_lexer_lexer {
     /* userdata passed to the logging callback */
 };
 
-MM_LEXER_API void mm_lexer_init(struct mm_lexer_lexer *lexer, const char *ptr, mm_lexer_size len,
+MM_LEXER_API void mm_lexer_init(struct mm_lexer *lexer, const char *ptr, mm_lexer_size len,
                     const struct mm_lexer_punctuation *punct, mm_lexer_log_f log, void *usr);
 /*  this function initializes the lexer
     Input:
@@ -416,28 +416,28 @@ MM_LEXER_API void mm_lexer_init(struct mm_lexer_lexer *lexer, const char *ptr, m
     - logging callback or NULL if not needed
     - userdata passed into the callback or NULL if not needed
 */
-MM_LEXER_API void mm_lexer_reset(struct mm_lexer_lexer*);
+MM_LEXER_API void mm_lexer_reset(struct mm_lexer*);
 /*  this function resets the lexer back to beginning */
-MM_LEXER_API int mm_lexer_read(struct mm_lexer_lexer*, struct mm_lexer_token*);
+MM_LEXER_API int mm_lexer_read(struct mm_lexer*, struct mm_lexer_token*);
 /*  this function reads a token from a loaded lexer
     Input:
     - token to hold the parsed content information
     Output:
     - if successfully 1 or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_read_on_line(struct mm_lexer_lexer*, struct mm_lexer_token*);
+MM_LEXER_API int mm_lexer_read_on_line(struct mm_lexer*, struct mm_lexer_token*);
 /*  this function reads a token from a loaded lexer only if on the same line
     Input:
     - token to hold the parsed content information
     Output:
     - if successfully read 1 or 0 otherwise
 */
-MM_LEXER_API void mm_lexer_unread(struct mm_lexer_lexer*, struct mm_lexer_token*);
+MM_LEXER_API void mm_lexer_unread(struct mm_lexer*, struct mm_lexer_token*);
 /*  this function pushes back a token (limitied to exactly one token)
     Input:
     - token push back into the lexer
 */
-MM_LEXER_API int mm_lexer_expect_string(struct mm_lexer_lexer*, const char*);
+MM_LEXER_API int mm_lexer_expect_string(struct mm_lexer*, const char*);
 /*  this function reads a token and check the token content. If the token
     content is not equal to the provided string a error occurs.
     Input:
@@ -445,7 +445,7 @@ MM_LEXER_API int mm_lexer_expect_string(struct mm_lexer_lexer*, const char*);
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_expect_type(struct mm_lexer_lexer*, enum mm_lexer_token_type type,
+MM_LEXER_API int mm_lexer_expect_type(struct mm_lexer*, enum mm_lexer_token_type type,
                                         unsigned int subtype, struct mm_lexer_token*);
 /*  this function reads a token and checks for token type + subtype. If the token
     type and subtype or not correct an error will be raised.
@@ -456,14 +456,14 @@ MM_LEXER_API int mm_lexer_expect_type(struct mm_lexer_lexer*, enum mm_lexer_toke
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_expect_any(struct mm_lexer_lexer*, struct mm_lexer_token*);
+MM_LEXER_API int mm_lexer_expect_any(struct mm_lexer*, struct mm_lexer_token*);
 /*  this function tries to read in a token and if not possible will raise and error
     Input:
     - token to hold the parsed content information
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_check_string(struct mm_lexer_lexer*, const char*);
+MM_LEXER_API int mm_lexer_check_string(struct mm_lexer*, const char*);
 /*  this function tries to read in a token holding with given content.
  *  If it succeeds the token will be returned. If not the read token will be unread.
     Input:
@@ -471,7 +471,7 @@ MM_LEXER_API int mm_lexer_check_string(struct mm_lexer_lexer*, const char*);
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_check_type(struct mm_lexer_lexer*, enum mm_lexer_token_type type,
+MM_LEXER_API int mm_lexer_check_type(struct mm_lexer*, enum mm_lexer_token_type type,
                                 unsigned int subtype, struct mm_lexer_token*);
 /*  this function tries to read in a token holding with token type and subtype.
  *  If it succeeds the token will be returned. If not the read token will be unread.
@@ -482,14 +482,14 @@ MM_LEXER_API int mm_lexer_check_type(struct mm_lexer_lexer*, enum mm_lexer_token
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_peek_string(struct mm_lexer_lexer*, const char*);
+MM_LEXER_API int mm_lexer_peek_string(struct mm_lexer*, const char*);
 /*  this function checks the next token for the given string content
     Input:
     - the expected parsed token string
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_peek_type(struct mm_lexer_lexer*, enum mm_lexer_token_type type,
+MM_LEXER_API int mm_lexer_peek_type(struct mm_lexer*, enum mm_lexer_token_type type,
                                     unsigned int subtype, struct mm_lexer_token*);
 /*  this function checks the next token for the given type and subtype
     Input:
@@ -499,28 +499,28 @@ MM_LEXER_API int mm_lexer_peek_type(struct mm_lexer_lexer*, enum mm_lexer_token_
     Output:
     - 1 if a token could be read or 0 otherwise
 */
-MM_LEXER_API int mm_lexer_skip_until(struct mm_lexer_lexer*, const char*);
+MM_LEXER_API int mm_lexer_skip_until(struct mm_lexer*, const char*);
 /*  this function skips all tokens until a token holding a certain string
     Input:
     - a expected string the parse should skip to
     Output:
     - 1 if successful, 0 otherwise
 */
-MM_LEXER_API int mm_lexer_skip_line(struct mm_lexer_lexer*);
+MM_LEXER_API int mm_lexer_skip_line(struct mm_lexer*);
 /*  this function skips the current line */
-MM_LEXER_API int mm_lexer_parse_int(struct mm_lexer_lexer*);
+MM_LEXER_API int mm_lexer_parse_int(struct mm_lexer*);
 /*  this function reads in a token and tries to convert it into an integer.
     If the conversion fails an error will be raised.
     Output:
     - parsed integer value
 */
-MM_LEXER_API int mm_lexer_parse_bool(struct mm_lexer_lexer*);
+MM_LEXER_API int mm_lexer_parse_bool(struct mm_lexer*);
 /*  this function reads in a token and tries to convert it into an boolean.
     If the conversion fails an error will be raised.
     Output:
     - parsed boolean value
 */
-MM_LEXER_API float mm_lexer_parse_float(struct mm_lexer_lexer*);
+MM_LEXER_API float mm_lexer_parse_float(struct mm_lexer*);
 /*  this function reads in a token and tries to convert it into an float.
     If the conversion fails an error will be raised.
     Output:
@@ -893,7 +893,7 @@ mm_lexer_token_to_unsigned_long(struct mm_lexer_token *tok)
  *                          LEXER
  * ---------------------------------------------------------------*/
 MM_LEXER_API void
-mm_lexer_init(struct mm_lexer_lexer *lexer, const char *ptr, mm_lexer_size len,
+mm_lexer_init(struct mm_lexer *lexer, const char *ptr, mm_lexer_size len,
     const struct mm_lexer_punctuation *punct, mm_lexer_log_f log, void *userdata)
 {
     mm_lexer_zero_struct(*lexer);
@@ -911,7 +911,7 @@ mm_lexer_init(struct mm_lexer_lexer *lexer, const char *ptr, mm_lexer_size len,
 }
 
 MM_LEXER_API void
-mm_lexer_reset(struct mm_lexer_lexer *lexer)
+mm_lexer_reset(struct mm_lexer *lexer)
 {
     lexer->current = lexer->buffer;
     lexer->last = lexer->buffer;
@@ -919,7 +919,7 @@ mm_lexer_reset(struct mm_lexer_lexer *lexer)
 }
 
 MM_LEXER_INTERN int
-mm_lexer_read_white_space(struct mm_lexer_lexer *lexer, int current_line)
+mm_lexer_read_white_space(struct mm_lexer *lexer, int current_line)
 {
     while (1) {
         /* skip white spaces */
@@ -988,7 +988,7 @@ mm_lexer_read_white_space(struct mm_lexer_lexer *lexer, int current_line)
 }
 
 MM_LEXER_INTERN int
-mm_lexer_read_esc_chars(struct mm_lexer_lexer *lexer, char *ch)
+mm_lexer_read_esc_chars(struct mm_lexer *lexer, char *ch)
 {
     int c, val, i;
     lexer->current++;
@@ -1065,7 +1065,7 @@ mm_lexer_read_esc_chars(struct mm_lexer_lexer *lexer, char *ch)
 }
 
 MM_LEXER_INTERN int
-mm_lexer_read_string(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token, int quote)
+mm_lexer_read_string(struct mm_lexer *lexer, struct mm_lexer_token *token, int quote)
 {
     mm_lexer_size tmpline;
     const char *tmp;
@@ -1134,7 +1134,7 @@ mm_lexer_read_string(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token,
 }
 
 MM_LEXER_INTERN int
-mm_lexer_read_name(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
+mm_lexer_read_name(struct mm_lexer *lexer, struct mm_lexer_token *token)
 {
     char c;
     token->type = MM_LEXER_TOKEN_NAME;
@@ -1155,7 +1155,7 @@ mm_lexer_read_name(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
 }
 
 MM_LEXER_INTERN int
-mm_lexer_check_str(const struct mm_lexer_lexer *lexer, const char *str, mm_lexer_size len)
+mm_lexer_check_str(const struct mm_lexer *lexer, const char *str, mm_lexer_size len)
 {
     mm_lexer_size i;
     for (i = 0; i < len && (&lexer->current[i] < lexer->end); ++i) {
@@ -1167,7 +1167,7 @@ mm_lexer_check_str(const struct mm_lexer_lexer *lexer, const char *str, mm_lexer
 }
 
 MM_LEXER_INTERN int
-mm_lexer_read_number(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
+mm_lexer_read_number(struct mm_lexer *lexer, struct mm_lexer_token *token)
 {
     mm_lexer_size i;
     int dot;
@@ -1315,7 +1315,7 @@ mm_lexer_read_number(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
 }
 
 MM_LEXER_INTERN int
-mm_lexer_read_punctuation(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
+mm_lexer_read_punctuation(struct mm_lexer *lexer, struct mm_lexer_token *token)
 {
     const struct mm_lexer_punctuation *punc;
     int l, i;
@@ -1342,7 +1342,7 @@ mm_lexer_read_punctuation(struct mm_lexer_lexer *lexer, struct mm_lexer_token *t
 }
 
 MM_LEXER_API int
-mm_lexer_read(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
+mm_lexer_read(struct mm_lexer *lexer, struct mm_lexer_token *token)
 {
     int c;
     if (!lexer->current) return 0;
@@ -1386,7 +1386,7 @@ mm_lexer_read(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
 }
 
 MM_LEXER_API int
-mm_lexer_read_on_line(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
+mm_lexer_read_on_line(struct mm_lexer *lexer, struct mm_lexer_token *token)
 {
     struct mm_lexer_token tok;
     if (!mm_lexer_read(lexer, &tok)) {
@@ -1404,7 +1404,7 @@ mm_lexer_read_on_line(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token
 }
 
 MM_LEXER_API int
-mm_lexer_expect_string(struct mm_lexer_lexer *lexer, const char *string)
+mm_lexer_expect_string(struct mm_lexer *lexer, const char *string)
 {
     struct mm_lexer_token token;
     if (!mm_lexer_read(lexer, &token)) {
@@ -1427,7 +1427,7 @@ mm_lexer_expect_string(struct mm_lexer_lexer *lexer, const char *string)
 }
 
 MM_LEXER_API int
-mm_lexer_expect_type(struct mm_lexer_lexer *lexer, enum mm_lexer_token_type type,
+mm_lexer_expect_type(struct mm_lexer *lexer, enum mm_lexer_token_type type,
     unsigned int subtype, struct mm_lexer_token *token)
 {
     if (!mm_lexer_read(lexer, token)) {
@@ -1458,7 +1458,7 @@ mm_lexer_expect_type(struct mm_lexer_lexer *lexer, enum mm_lexer_token_type type
 }
 
 MM_LEXER_API int
-mm_lexer_expect_any(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
+mm_lexer_expect_any(struct mm_lexer *lexer, struct mm_lexer_token *token)
 {
     if (!mm_lexer_read(lexer, token)) {
         if (lexer->log) {
@@ -1471,7 +1471,7 @@ mm_lexer_expect_any(struct mm_lexer_lexer *lexer, struct mm_lexer_token *token)
 }
 
 MM_LEXER_API int
-mm_lexer_check_string(struct mm_lexer_lexer *lexer, const char *string)
+mm_lexer_check_string(struct mm_lexer *lexer, const char *string)
 {
     struct mm_lexer_token token;
     if (!mm_lexer_read(lexer, &token))
@@ -1486,7 +1486,7 @@ mm_lexer_check_string(struct mm_lexer_lexer *lexer, const char *string)
 }
 
 MM_LEXER_API int
-mm_lexer_check_type(struct mm_lexer_lexer *lexer, enum mm_lexer_token_type type,
+mm_lexer_check_type(struct mm_lexer *lexer, enum mm_lexer_token_type type,
     unsigned int subtype, struct mm_lexer_token *token)
 {
     struct mm_lexer_token tok;
@@ -1504,7 +1504,7 @@ mm_lexer_check_type(struct mm_lexer_lexer *lexer, enum mm_lexer_token_type type,
 }
 
 MM_LEXER_API int
-mm_lexer_peek_string(struct mm_lexer_lexer *lexer, const char *string)
+mm_lexer_peek_string(struct mm_lexer *lexer, const char *string)
 {
     struct mm_lexer_token tok;
     if (!mm_lexer_read(lexer, &tok))
@@ -1519,7 +1519,7 @@ mm_lexer_peek_string(struct mm_lexer_lexer *lexer, const char *string)
 }
 
 MM_LEXER_API int
-mm_lexer_peek_type(struct mm_lexer_lexer *lexer, enum mm_lexer_token_type type,
+mm_lexer_peek_type(struct mm_lexer *lexer, enum mm_lexer_token_type type,
     unsigned int subtype, struct mm_lexer_token *token)
 {
     struct mm_lexer_token tok;
@@ -1538,7 +1538,7 @@ mm_lexer_peek_type(struct mm_lexer_lexer *lexer, enum mm_lexer_token_type type,
 }
 
 MM_LEXER_API int
-mm_lexer_skip_until(struct mm_lexer_lexer *lexer, const char *string)
+mm_lexer_skip_until(struct mm_lexer *lexer, const char *string)
 {
     struct mm_lexer_token tok;
     while (mm_lexer_read(lexer, &tok)) {
@@ -1549,7 +1549,7 @@ mm_lexer_skip_until(struct mm_lexer_lexer *lexer, const char *string)
 }
 
 MM_LEXER_API int
-mm_lexer_skip_line(struct mm_lexer_lexer *lexer)
+mm_lexer_skip_line(struct mm_lexer *lexer)
 {
     struct mm_lexer_token tok;
     while (mm_lexer_read(lexer, &tok)) {
@@ -1563,7 +1563,7 @@ mm_lexer_skip_line(struct mm_lexer_lexer *lexer)
 }
 
 MM_LEXER_API int
-mm_lexer_parse_int(struct mm_lexer_lexer *lexer)
+mm_lexer_parse_int(struct mm_lexer *lexer)
 {
     struct mm_lexer_token tok;
     if (!mm_lexer_read(lexer, &tok))
@@ -1582,7 +1582,7 @@ mm_lexer_parse_int(struct mm_lexer_lexer *lexer)
 }
 
 MM_LEXER_API int
-mm_lexer_parse_bool(struct mm_lexer_lexer *lexer)
+mm_lexer_parse_bool(struct mm_lexer *lexer)
 {
     struct mm_lexer_token tok;
     if (!mm_lexer_expect_type(lexer, MM_LEXER_TOKEN_NUMBER, 0, &tok)) {
@@ -1597,7 +1597,7 @@ mm_lexer_parse_bool(struct mm_lexer_lexer *lexer)
 }
 
 MM_LEXER_API float
-mm_lexer_parse_float(struct mm_lexer_lexer *lexer)
+mm_lexer_parse_float(struct mm_lexer *lexer)
 {
     struct mm_lexer_token tok;
     if (!mm_lexer_read(lexer, &tok)) {

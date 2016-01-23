@@ -58,7 +58,7 @@ int main(void)
     {
         const char text[] = "name";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "name", MM_LEXER_TOKEN_NAME, 0);
@@ -68,7 +68,7 @@ int main(void)
     {
         const char text[] = "47845";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "47845", MM_LEXER_TOKEN_NUMBER, (MM_LEXER_TOKEN_DEC|MM_LEXER_TOKEN_INT));
@@ -79,7 +79,7 @@ int main(void)
     {
         const char text[] = "0xDEADBEEF";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "0xDEADBEEF", MM_LEXER_TOKEN_NUMBER, MM_LEXER_TOKEN_HEX);
@@ -90,7 +90,7 @@ int main(void)
     {
         const char text[] = "013471";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "013471", MM_LEXER_TOKEN_NUMBER, MM_LEXER_TOKEN_OCT);
@@ -101,7 +101,7 @@ int main(void)
     {
         const char text[] = "0b10";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "0b10", MM_LEXER_TOKEN_NUMBER, MM_LEXER_TOKEN_BIN);
@@ -113,7 +113,7 @@ int main(void)
         float value;
         const char text[] = "5684.675f";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "5684.675", MM_LEXER_TOKEN_NUMBER, 0);
@@ -125,7 +125,7 @@ int main(void)
     {
         const char text[] = "0.544";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "0.544", MM_LEXER_TOKEN_NUMBER, (MM_LEXER_TOKEN_FLOAT|MM_LEXER_TOKEN_DOUBLE_PREC));
@@ -136,7 +136,7 @@ int main(void)
     {
         const char text[] = "-23957";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "-", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SUB);
@@ -149,7 +149,7 @@ int main(void)
     {
         const char text[] = "-1.845f";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "-", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SUB);
@@ -162,7 +162,7 @@ int main(void)
     {
         const char text[] = "-34356.4384";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "-", MM_LEXER_TOKEN_PUNCTUATION, MM_LEXER_PUNCT_SUB);
@@ -175,7 +175,7 @@ int main(void)
     {
         const char text[] = "\"string\"";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "string", MM_LEXER_TOKEN_STRING, 0);
@@ -185,7 +185,7 @@ int main(void)
     {
         const char text[] = "  \t     register";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
         test_assert(mm_lexer_read(&lexer, &tok));
         test_token(&tok, "register", MM_LEXER_TOKEN_NAME, 0);
@@ -195,7 +195,7 @@ int main(void)
     {
         const char text[] = "\t\nconst char\t*text = \"test\";\n";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
 
         test_assert(mm_lexer_read(&lexer, &tok));
@@ -230,7 +230,7 @@ int main(void)
             "   char *name;"
             "};";
         struct mm_lexer_token tok;
-        struct mm_lexer_lexer lexer;
+        struct mm_lexer lexer;
         mm_lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
 
         test_assert(mm_lexer_read(&lexer, &tok));
