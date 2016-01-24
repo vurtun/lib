@@ -293,7 +293,7 @@ struct mm_wby_server {
     /* connections */
 };
 
-MM_WBY_API void mm_wby_server_init(struct mm_wby_server*, const struct mm_wby_config*,
+MM_WBY_API void mm_wby_init(struct mm_wby_server*, const struct mm_wby_config*,
                             mm_wby_size *needed_memory);
 /*  this function clears the server and calculates the needed memory to run
     Input:
@@ -301,15 +301,15 @@ MM_WBY_API void mm_wby_server_init(struct mm_wby_server*, const struct mm_wby_co
     Output:
     -   needed memory for the server to run
 */
-MM_WBY_API int mm_wby_server_start(struct mm_wby_server*, void *memory);
+MM_WBY_API int mm_wby_start(struct mm_wby_server*, void *memory);
 /*  this function starts running the server in the specificed memory space. Size
  *  must be at least big enough as determined in the mm_wby_server_init().
     Input:
     -   allocated memory space to create the server into
 */
-MM_WBY_API void mm_wby_server_update(struct mm_wby_server*);
+MM_WBY_API void mm_wby_update(struct mm_wby_server*);
 /* updates the server by being called frequenctly (at least once a frame) */
-MM_WBY_API void mm_wby_server_stop(struct mm_wby_server*);
+MM_WBY_API void mm_wby_stop(struct mm_wby_server*);
 /* stops and shutdown the server */
 MM_WBY_API int mm_wby_response_begin(struct mm_wby_con*, int status_code, int content_length,
                                     const struct mm_wby_header headers[], int header_count);
@@ -1546,7 +1546,7 @@ template<typename T> struct mm_wby_alignof{struct Big {T x; char c;}; enum {
 #endif
 
 MM_WBY_API void
-mm_wby_server_init(struct mm_wby_server *srv, const struct mm_wby_config *cfg, mm_wby_size *needed_memory)
+mm_wby_init(struct mm_wby_server *srv, const struct mm_wby_config *cfg, mm_wby_size *needed_memory)
 {
     MM_WBY_STORAGE const mm_wby_size mm_wby_conn_align = MM_WBY_ALIGNOF(struct mm_wby_connection);
     MM_WBY_ASSERT(srv);
@@ -1565,7 +1565,7 @@ mm_wby_server_init(struct mm_wby_server *srv, const struct mm_wby_config *cfg, m
 }
 
 MM_WBY_API int
-mm_wby_server_start(struct mm_wby_server *server, void *memory)
+mm_wby_start(struct mm_wby_server *server, void *memory)
 {
     mm_wby_size i;
     mm_wby_socket sock;
@@ -1637,7 +1637,7 @@ error:
 }
 
 MM_WBY_API void
-mm_wby_server_stop(struct mm_wby_server *srv)
+mm_wby_stop(struct mm_wby_server *srv)
 {
     mm_wby_size i;
     mm_wby_socket_close(MM_WBY_SOCK(srv->socket));
@@ -1646,7 +1646,7 @@ mm_wby_server_stop(struct mm_wby_server *srv)
 }
 
 MM_WBY_INTERN int
-mm_wby_server_on_incoming(struct mm_wby_server *srv)
+mm_wby_on_incoming(struct mm_wby_server *srv)
 {
     mm_wby_size connection_index;
     char MM_WBY_ALIGN(8) client_addr[64];
@@ -1689,7 +1689,7 @@ mm_wby_server_on_incoming(struct mm_wby_server *srv)
 }
 
 MM_WBY_INTERN void
-mm_wby_server_update_connection(struct mm_wby_server *srv, struct mm_wby_connection* connection)
+mm_wby_update_connection(struct mm_wby_server *srv, struct mm_wby_connection* connection)
 {
     /* This is no longer a fresh connection. Only read from it when select() says
     * so in the future. */
@@ -1899,7 +1899,7 @@ mm_wby_server_update_connection(struct mm_wby_server *srv, struct mm_wby_connect
 }
 
 MM_WBY_API void
-mm_wby_server_update(struct mm_wby_server *srv)
+mm_wby_update(struct mm_wby_server *srv)
 {
     int err;
     mm_wby_size i, count;
@@ -1942,7 +1942,7 @@ mm_wby_server_update(struct mm_wby_server *srv)
     if (FD_ISSET(MM_WBY_SOCK(srv->socket), &read_fds)) {
         do {
             mm_wby_dbg(srv->config.log, "awake on incoming");
-            err = mm_wby_server_on_incoming(srv);
+            err = mm_wby_on_incoming(srv);
         } while (err == 0);
     }
 
@@ -1954,7 +1954,7 @@ mm_wby_server_update(struct mm_wby_server *srv)
             conn->flags & MM_WBY_CON_FLAG_FRESH_CONNECTION)
         {
             mm_wby_dbg(srv->config.log, "reading from connection %d", i);
-            mm_wby_server_update_connection(srv, conn);
+            mm_wby_update_connection(srv, conn);
         }
     }
 

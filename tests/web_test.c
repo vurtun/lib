@@ -194,14 +194,14 @@ main(void)
     }}
 #endif
 
-    mm_wby_server_init(&server, &config, &needed_memory);
+    mm_wby_init(&server, &config, &needed_memory);
     memory = calloc(needed_memory, 1);
-    mm_wby_server_start(&server, memory);
+    mm_wby_start(&server, memory);
 
     memset(&state, 0, sizeof state);
     while (!state.quit) {
         int i = 0;
-        mm_wby_server_update(&server);
+        mm_wby_update(&server);
         /* Push some test data over websockets */
         if (!(state.frame_counter & 0x7f)) {
             for (i = 0; i < state.conn_count; ++i) {
@@ -213,7 +213,7 @@ main(void)
         sleep_for(30);
         ++state.frame_counter;
     }
-    mm_wby_server_stop(&server);
+    mm_wby_stop(&server);
     free(memory);
 #if defined(_WIN32)
     WSACleanup();
