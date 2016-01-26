@@ -808,7 +808,6 @@ mm_lexer_token_parse_bin(const char *p, mm_lexer_size length)
 MM_LEXER_INTERN void
 mm_lexer_token_number_value(struct mm_lexer_token *tok)
 {
-    int i, pow, c;
     const char *p;
     MM_LEXER_ASSERT(tok->type == MM_LEXER_TOKEN_NUMBER);
     tok->value.i = 0;
