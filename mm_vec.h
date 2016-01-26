@@ -656,8 +656,8 @@ xv_memcpy(void *dst0, const void *src0, mmx_size length)
 {
     mmx_ptr t;
     typedef int word;
-    char *dst = dst0;
-    const char *src = src0;
+    char *dst = (char*)dst0;
+    const char *src = (const char*)src0;
     if (length == 0 || dst == src)
         goto done;
 
@@ -1820,6 +1820,7 @@ xq_get_rotation_in_axis(float *res, int axis, const float *q)
         res[0] = 0.0f;
         res[1] = 0.0f;
         break;
+    default: return 0;
     }
     xq_normeq(res);
     angle = 2.0f * (float)MMX_ACOS(res[3]);
@@ -2046,7 +2047,6 @@ xplane_from_points(float *p, const float *p1, const float *p2, const float *p3)
 MMX_API int
 xplane_from_vec(float *r, const float *dir1, const float *dir2, const float *p)
 {
-    float t0[3];
     xv_cross(r, dir1, dir2, 3);
     if (xplane_norm_self(r) == 0.0f)
         return 0;
@@ -2520,7 +2520,6 @@ xbox_translate_self(float *r, const float *t)
 MMX_API void
 xbox_transform(float *r, const float *box, const float *origin, const float *axis)
 {
-    int i;
     float t[3];
     float center[3];
     float extents[3];
@@ -2545,14 +2544,14 @@ xbox_transform(float *r, const float *box, const float *origin, const float *axi
 MMX_API void
 xbox_rotate(float *r, const float *b, const float *mat33)
 {
-    const MMX_STORAGE float origin[] = {0,0,0};
+    MMX_STORAGE const float origin[] = {0,0,0};
     xbox_transform(r, b, origin, mat33);
 }
 
 MMX_API void
 xbox_rotate_self(float *r, const float *mat33)
 {
-    const MMX_STORAGE float origin[] = {0,0,0};
+    MMX_STORAGE const float origin[] = {0,0,0};
     xbox_transform(r, r, origin, mat33);
 }
 
