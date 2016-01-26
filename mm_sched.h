@@ -738,7 +738,6 @@ mm_sched_pipe_write(struct mm_sched_pipe *pipe, const struct mm_sched_subset_tas
      * writer, but should not be called by readers  */
     mm_sched_uint actual_write;
     mm_sched_uint write_index;
-    mm_sched_uint num_in_pipe;
     MM_SCHED_ASSERT(pipe);
     MM_SCHED_ASSERT(src);
 
