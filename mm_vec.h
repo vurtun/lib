@@ -156,9 +156,9 @@ typedef MMX_UINT_PTR mmx_ptr;
  *                          VECTOR
  * ---------------------------------------------------------------*/
 #define xv(v) ((float*)(&(v)))
-#define xv_op(a,p,b,n, post) (((a)[n] p (b)[n]) post)
+#define xv_op(a,p,b,n, post)        (((a)[n] p (b)[n]) post)
 #define xv_applys(r,e,a,n,p,s,post) (r)[n] e ((((a)[n] p s)) post)
-#define xv_expr(r,e,a,p,b,n,post) (r)[n] e ((xv_op(a,p,b,n,post)))
+#define xv_expr(r,e,a,p,b,n,post)   (r)[n] e ((xv_op(a,p,b,n,post)))
 
 #define xv2_set(v,x,y)      (v)[0]=(x), (v)[1]=(y)
 #define xv3_set(v,x,y,z)    (v)[0]=(x), (v)[1]=(y), (v)[2]=(z)
@@ -336,8 +336,8 @@ MMX_API int xv3_project_along_plane(float *r, const float *v, const float *norma
                                     float epsilon, float over_bounce);
 MMX_API void xv3_project(float *res3, const float *obj3, const float *mat4_model,
                         const float *mat4_proj, float *viewport4);
-MMX_API void xv3_unproject(float *res3, const float *window2, const float *mat4_model,
-                        const float *mat4_proj, float *viewport4);
+MMX_API void xv3_unproject(float *res3, const float *window3, const float *mat4_model,
+                        const float *mat4_proj, const float *viewport4);
 /* ---------------------------------------------------------------
  *                          MATRIX
  * ---------------------------------------------------------------*/
@@ -656,8 +656,8 @@ xv_memcpy(void *dst0, const void *src0, mmx_size length)
 {
     mmx_ptr t;
     typedef int word;
-    char *dst = (char*)dst0;
-    const char *src = (const char*)src0;
+    char *dst = dst0;
+    const char *src = src0;
     if (length == 0 || dst == src)
         goto done;
 
@@ -884,14 +884,14 @@ xv3_project(float *res3, const float *obj3, const float *mat_model,
 }
 
 MMX_API void
-xv3_unproject(float *res3, const float *win, const float *mat_model,
-    const float *mat_proj, float *viewport)
+xv3_unproject(float *res3, const float *win, const float *mat_view,
+    const float *mat_proj, const float *viewport)
 {
     float inverse[16], tmp[4];
-    xv3_cpy(tmp, win); tmp[3] = 1.0f;
-    xm4_mul(inverse, mat_proj, mat_model);
+    xm4_mul(inverse, mat_view, mat_proj);
     xm4_inverse_self(inverse);
 
+    xv4_set(tmp, win[0], win[1], win[2], 1.0f);
     tmp[0] = (tmp[0] - viewport[0]) / viewport[2];
     tmp[1] = (tmp[1] - viewport[1]) / viewport[3];
 
@@ -899,8 +899,7 @@ xv3_unproject(float *res3, const float *win, const float *mat_model,
     xv_subieq(tmp, 1, 4);
 
     xm4_transform(tmp, inverse, tmp);
-    xv_divieq(tmp, tmp[3], 4);
-    xv3_cpy(res3, tmp);
+    xv_divi(res3, tmp, tmp[3], 3);
 }
 
 /* ---------------------------------------------------------------
@@ -1820,7 +1819,6 @@ xq_get_rotation_in_axis(float *res, int axis, const float *q)
         res[0] = 0.0f;
         res[1] = 0.0f;
         break;
-    default: return 0;
     }
     xq_normeq(res);
     angle = 2.0f * (float)MMX_ACOS(res[3]);
@@ -2047,6 +2045,7 @@ xplane_from_points(float *p, const float *p1, const float *p2, const float *p3)
 MMX_API int
 xplane_from_vec(float *r, const float *dir1, const float *dir2, const float *p)
 {
+    float t0[3];
     xv_cross(r, dir1, dir2, 3);
     if (xplane_norm_self(r) == 0.0f)
         return 0;
@@ -2520,6 +2519,7 @@ xbox_translate_self(float *r, const float *t)
 MMX_API void
 xbox_transform(float *r, const float *box, const float *origin, const float *axis)
 {
+    int i;
     float t[3];
     float center[3];
     float extents[3];
@@ -2544,14 +2544,14 @@ xbox_transform(float *r, const float *box, const float *origin, const float *axi
 MMX_API void
 xbox_rotate(float *r, const float *b, const float *mat33)
 {
-    MMX_STORAGE const float origin[] = {0,0,0};
+    const MMX_STORAGE float origin[] = {0,0,0};
     xbox_transform(r, b, origin, mat33);
 }
 
 MMX_API void
 xbox_rotate_self(float *r, const float *mat33)
 {
-    MMX_STORAGE const float origin[] = {0,0,0};
+    const MMX_STORAGE float origin[] = {0,0,0};
     xbox_transform(r, r, origin, mat33);
 }
 
@@ -2671,7 +2671,7 @@ xbox_intersects_ray(float *scale, const float *b, const float *start, const floa
     for (i = 0; i < 3; ++i) {
         if (start[i] < b[i])
             side = 0;
-        else if (start[i] < b[3+i])
+        else if (start[i] > b[3+i])
             side = 1;
         else {
             inside++;
