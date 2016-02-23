@@ -257,6 +257,7 @@ MM_SCHED_API void mm_scheduler_stop(struct mm_scheduler*);
 /*  this function waits for all task inside the scheduler to finish and stops
  *  all threads and shuts the scheduler down. Not guaranteed to work unless we
  *  are in a situation where task aren't being continuosly added. */
+
 #ifdef __cplusplus
 }
 #endif
@@ -715,6 +716,7 @@ mm_sched_pipe_read_front(struct mm_sched_pipe *pipe, struct mm_sched_subset_task
             pipe->read = read_count;
             return 0;
         }
+
         --front_read;
         actual_read = front_read & MM_SCHED_PIPE_MASK;
         prev = mm_sched_atomic_cmp_swp(&pipe->flags[actual_read], MM_SCHED_PIPE_INVALID, MM_SCHED_PIPE_CAN_READ);
@@ -887,7 +889,8 @@ mm_scheduler_init(struct mm_scheduler *s, mm_sched_size *memory,
     *memory += sizeof(struct mm_sched_thread_args) * s->threads_num;
     *memory += sizeof(mm_sched_thread) * s->threads_num;
     *memory += sizeof(struct mm_sched_event);
-    *memory += mm_sched_pipe_align + mm_sched_arg_align + mm_sched_thread_align + mm_sched_event_align;
+    *memory += mm_sched_pipe_align + mm_sched_arg_align;
+    *memory += mm_sched_thread_align + mm_sched_event_align;
     s->memory = *memory;
 }
 
@@ -909,7 +912,7 @@ mm_scheduler_start(struct mm_scheduler *s, void *memory)
     s->event = (struct mm_sched_event*)MM_SCHED_ALIGN_PTR(s->args + s->threads_num, mm_sched_event_align);
     *s->event = mm_sched_event_create();
 
-    /* Create one less thread than thread_num as the main thread count as one */
+    /* Create one less thread than thread_num as the main thread counts as one */
     s->args[0].thread_num = 0;
     s->args[0].scheduler = s;
 #if  defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
@@ -923,14 +926,16 @@ mm_scheduler_start(struct mm_scheduler *s, void *memory)
     for (i = 1; i < s->threads_num; ++i) {
         s->args[i].thread_num = i;
         s->args[i].scheduler = s;
-        mm_sched_thread_create(&((mm_sched_thread*)(s->threads))[i], mm_sched_tasking_thread_f, &s->args[i]);
+        mm_sched_thread_create(&((mm_sched_thread*)(s->threads))[i],
+            mm_sched_tasking_thread_f, &s->args[i]);
         s->thread_running++;
     }
     s->have_threads = 1;
 }
 
 MM_SCHED_API void
-mm_scheduler_add(struct mm_sched_task *task, struct mm_scheduler *s, mm_sched_run func, void *pArg, mm_sched_uint size)
+mm_scheduler_add(struct mm_sched_task *task, struct mm_scheduler *s,
+    mm_sched_run func, void *pArg, mm_sched_uint size)
 {
     struct mm_sched_subset_task subtask;
     mm_sched_uint range_to_run;
