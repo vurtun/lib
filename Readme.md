@@ -6,12 +6,13 @@ My single header libraries for C/C++.
 |library | lastest version | category | LoC | license | description
 | --------------------- | ---- | -------- | --- | --- | --------------------------------
 |**mm_lexer.h** | 1.00 | parser | 1159 | zlib | simple lexer for C-like languages
+|**mm_meta.h** | 0.01 | parser | 2128 | zlib |  code metadata generator for C
 |**mm_sched.h** | 1.00 | multithreading | 696 | zlib | multithreaded task scheduler
-|**mm_vec.h** | 0.02 | math | 2137 | zlib | vector math
+|**mm_vec.h** | 0.02 | math | 2160 | zlib | vector math
 |**mm_web.h** | 1.00 | network | 1455 | BSD |  lightweight webserver
 
-Total libraries: 4  
-Total lines of C code: 5394
+Total libraries: 5  
+Total lines of C code: 7703
 
 ##FAQ
 ---
