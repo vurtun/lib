@@ -23,10 +23,10 @@
 
 #define UNUSED(x) ((void)x)
 
-#define MM_SCHED_STATIC
-#define MM_SCHED_IMPLEMENTATION
-#define MM_SCHED_USE_FIXED_TYPES
-#define MM_SCHED_USE_ASSERT
+#define SCHED_STATIC
+#define SCHED_IMPLEMENTATION
+#define SCHED_USE_FIXED_TYPES
+#define SCHED_USE_ASSERT
 #include "../mm_sched.h"
 
 struct parallel_sum_args {
@@ -45,7 +45,7 @@ parallel_sum_arg(unsigned long partial_sums)
 }
 
 static void
-parallel_sum(void *pArgs, struct mm_scheduler *ts, mm_sched_uint start, mm_sched_uint end, mm_sched_uint thread_num)
+parallel_sum(void *pArgs, struct scheduler *ts, sched_uint start, sched_uint end, sched_uint thread_num)
 {
     unsigned long sum = 0, i = 0;
     struct parallel_sum_args args;
@@ -58,16 +58,17 @@ parallel_sum(void *pArgs, struct mm_scheduler *ts, mm_sched_uint start, mm_sched
 }
 
 static void
-parallel_reduction_sum(void *pArgs, struct mm_scheduler *ts, mm_sched_uint start, mm_sched_uint end, mm_sched_uint thread_num)
+parallel_reduction_sum(void *pArgs, struct scheduler *ts,
+    sched_uint start, sched_uint end, sched_uint thread_num)
 {
     unsigned long sum = 0, in_max_sum, i = 0;
     struct parallel_sum_args args = parallel_sum_arg(ts->partitions_num);
     UNUSED(start); UNUSED(end); UNUSED(thread_num);
     in_max_sum = *(unsigned long*)pArgs;
     {
-        struct mm_sched_task task;
-        mm_scheduler_add(&task, ts, parallel_sum, &args, (unsigned int)in_max_sum);
-        mm_scheduler_join(ts, &task);
+        struct sched_task task;
+        scheduler_add(&task, ts, parallel_sum, &args, (unsigned int)in_max_sum);
+        scheduler_join(ts, &task);
     }
     for (i = 0; i < args.parital_sum_num; ++i)
         sum += args.partial_sums[i];
@@ -81,19 +82,19 @@ main(void)
     void *memory;
     size_t needed_memory;
 
-    struct mm_scheduler ts;
-    mm_scheduler_init(&ts, &needed_memory, MM_SCHED_DEFAULT, NULL);
+    struct scheduler ts;
+    scheduler_init(&ts, &needed_memory, SCHED_DEFAULT, NULL);
     memory = calloc(needed_memory, 1);
     assert(memory);
-    mm_scheduler_start(&ts, memory);
+    scheduler_start(&ts, memory);
     {
         unsigned long serial_sum = 0;
         unsigned long max = 10 * 1024 * 1024;
         unsigned long in_max_sum = max;
 
-        struct mm_sched_task task;
-        mm_scheduler_add(&task, &ts, parallel_reduction_sum, &in_max_sum, 1);
-        mm_scheduler_join(&ts, &task);
+        struct sched_task task;
+        scheduler_add(&task, &ts, parallel_reduction_sum, &in_max_sum, 1);
+        scheduler_join(&ts, &task);
 
         fprintf(stdout, "Parallel complete sum:\t%lu\n", in_max_sum);
         {
@@ -103,7 +104,7 @@ main(void)
         }
         fprintf(stdout, "Serial Example complete sum:\t%lu\n", serial_sum);
     }
-    mm_scheduler_stop(&ts);
+    scheduler_stop(&ts);
     free(memory);
     return 0;
 }

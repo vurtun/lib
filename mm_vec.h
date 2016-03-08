@@ -199,6 +199,32 @@ typedef MMX_UINT_PTR mmx_ptr;
     xv_applys(r,e,a,2,p,s,post),\
     xv_applys(r,e,a,3,p,s,post)
 
+#define vec2_eval(r,e,a,f)\
+    r[0]e(float)f(a[0]),\
+    r[1]e(float)f(a[1])
+#define vec3_eval(r,e,a,f)\
+    r[0]e(float)f(a[0]),\
+    r[1]e(float)f(a[1]),\
+    r[2]e(float)f(a[2])
+#define vec4_eval(r,e,a,f)\
+    r[0]e(float)f(a[0]),\
+    r[1]e(float)f(a[1]),\
+    r[2]e(float)f(a[2]),\
+    r[3]e(float)f(a[3])
+
+#define vec2_eval2(r,e,a,b,f)\
+    r[0] e (float)f(a[0],b[0]),\
+    r[1] e (float)f(a[1],b[1])
+#define vec3_eval2(r,e,a,b,f)\
+    r[0] e (float)f(a[0],b[0]),\
+    r[1] e (float)f(a[1],b[1]),\
+    r[2] e (float)f(a[1],b[2])
+#define vec4_eval2(r,e,a,b,f)\
+    r[0] e (float)f(a[0],b[0]),\
+    r[1] e (float)f(a[1],b[1]),\
+    r[2] e (float)f(a[2],b[2]),\
+    r[3] e (float)f(a[3],b[3])
+
 #define xv2_dot(a,b)\
     xv_op(a,*,b,0,+0)+\
     xv_op(a,*,b,1,+0)
@@ -217,6 +243,9 @@ typedef MMX_UINT_PTR mmx_ptr;
 
 #define xv_apply(r,e,a,p,s,dim) xv##dim##_apply(r,e,a,p,s,+0)
 #define xv_map(r,e,a,p,b,dim)   xv##dim##_map(r,e,a,p,b,+0)
+
+#define xv_eval(r,e,f,a,dim)    xv##dim##_eval(r,e,a,f)
+#define xv_eval2(r,e,f,a,b,dim) xv##dim##_eval2(r,e,a,b,f)
 
 #define xv_applyi(r,e,a,p,s,post,dim) xv##dim##_apply(r,e,a,p,s,post)
 #define xv_mapi(r,e,a,p,b,post,dim)   xv##dim##_map(r,e,a,p,b,post)
@@ -704,7 +733,6 @@ xv_memcpy(void *dst0, const void *src0, mmx_size length)
 done:
     return (dst0);
 }
-
 
 MMX_INTERN void
 xv_memset(void *ptr, int c0, unsigned long size)
