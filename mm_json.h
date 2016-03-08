@@ -486,7 +486,7 @@ json_stoi(struct json_token *tok)
 }
 
 /* converts a token containing a real value into a floating point number */
-static json_number
+JSON_INTERN json_number
 json_stof(struct json_token *tok)
 {
     int i = 0;
