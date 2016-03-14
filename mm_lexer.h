@@ -1381,7 +1381,7 @@ lexer_expect_type(struct lexer *lexer, enum lexer_token_type type,
     if (token->type != type) {
         if (lexer->log) {
             lexer->log(lexer->userdata, LEXER_ERROR, lexer->line,
-                "read token has type %s instead of expected type: %d", token->type, type);
+                "read token has type %d instead of expected type: %d", token->type, type);
         }
         lexer->error = 1;
         return 0;
