@@ -298,6 +298,14 @@ static int test_vector(void)
         xv_lerp(xv(c), xv(a), 0.5f, xv(b), 3);
         xv_test_vec3(c, 2.0f, 2.0f, 2.0f);
     }
+    xv_test_section("xv_zyx")
+    {
+        float t[3], v[3] = {4.0f, 3.0f, 2.0f};
+        xv_zyx(t,=,v);
+        xv_test_assert(t[0] == 2.0f);
+        xv_test_assert(t[1] == 3.0f);
+        xv_test_assert(t[2] == 4.0f);
+    }
     xv_test_section("xv_len")
     {
         a = XV3(5.0f, 1.0f, 2.0f);

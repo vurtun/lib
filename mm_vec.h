@@ -16,6 +16,11 @@ ABOUT:
     plane, quaternion, sphere, AABB type. Downside is that it is not as nice to
     use than directly defining types.
 
+    In general especially the vector library module fits as some kind of assembly
+    for code generation. Basically you write/use a lexer (like mm_lexer) and parse
+    operation like: c = a + b with a vec2 type and do a code generation pass before
+    compiling to generate xv_add(xv(c), xv(a), xv(b), 2) inside your file.
+
 DEFINES:
     MMX_IMPLEMENTATION
         Generates the implementation of the library into the included file.
@@ -28,7 +33,6 @@ DEFINES:
         file and all internal symbols and functions will only be visible inside
         that file.
 
-    MMX_INT32
     MMX_UINT32
     MMX_UINT_PTR
         If your compiler is C99 you do not need to define this.
@@ -41,7 +45,7 @@ DEFINES:
         If not, mm_vec.h uses a naive (maybe inefficent) implementation.
 
     MMX_MEMCPY
-        You can define this to 'memcpy' or your own memset replacement.
+        You can define this to 'memcpy' or your own memcpy replacement.
         If not, mm_vec.h uses a naive (maybe inefficent) implementation.
 
     MMX_USE_DEGREES
@@ -123,42 +127,66 @@ extern "C" {
 #define MMX_SQRT sqrt
 #endif
 
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
-#include <stdint.h>
-#ifndef MMX_UINT32
-#define MMX_UINT32 uint32_t
-#endif
-#ifndef MMX_INT32
-#define MMX_INT32 int32_t
-#endif
-#ifndef MMX_UINT_PTR
-#define MMX_UINT_PTR uintptr_t
-#endif
-#else
-#ifndef MMX_UINT32
-#define MMX_UINT32 unsigned int
-#endif
-#ifndef MMX_INT32
-#define MMX_INT32 int
-#endif
-#ifndef MMX_UINT_PTR
-#define MMX_UINT_PTR unsigned long
-#endif
-#endif
-
-typedef unsigned char mmx_byte;
-typedef MMX_UINT32 mmx_uint;
-typedef MMX_INT32 mmx_int;
-typedef MMX_UINT_PTR mmx_size;
-typedef MMX_UINT_PTR mmx_ptr;
-
 /* ---------------------------------------------------------------
  *                          VECTOR
  * ---------------------------------------------------------------*/
 #define xv(v) ((float*)(&(v)))
-#define xv_op(a,p,b,n, post)        (((a)[n] p (b)[n]) post)
-#define xv_applys(r,e,a,n,p,s,post) (r)[n] e ((((a)[n] p s)) post)
-#define xv_expr(r,e,a,p,b,n,post)   (r)[n] e ((xv_op(a,p,b,n,post)))
+#define xv_x(v) (v)[0]
+#define xv_y(v) (v)[1]
+#define xv_z(v) (v)[2]
+#define xv_w(v) (v)[3]
+
+#define xv_xx(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[0]
+#define xv_xy(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[1]
+#define xv_xz(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[2]
+#define xv_xw(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[3]
+
+#define xv_yx(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[0]
+#define xv_yy(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[1]
+#define xv_yz(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[2]
+#define xv_yw(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[3]
+
+#define xv_zx(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[0]
+#define xv_zy(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[1]
+#define xv_zz(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[2]
+#define xv_zw(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[3]
+
+#define xv_xxx(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[0], (t)[2] p (v)[0]
+#define xv_xxy(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[0], (t)[2] p (v)[1]
+#define xv_xxz(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[0], (t)[2] p (v)[2]
+
+#define xv_xyx(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[1], (t)[2] p (v)[0]
+#define xv_xyy(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[1], (t)[2] p (v)[1]
+#define xv_xyz(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[1], (t)[2] p (v)[2]
+
+#define xv_xzx(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[2], (t)[2] p (v)[0]
+#define xv_xzy(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[2], (t)[2] p (v)[1]
+#define xv_xzz(t,p,v) (t)[0] p (v)[0], (t)[1] p (v)[2], (t)[2] p (v)[2]
+
+#define xv_yxx(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[0], (t)[2] p (v)[0]
+#define xv_yxy(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[0], (t)[2] p (v)[1]
+#define xv_yxz(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[0], (t)[2] p (v)[2]
+
+#define xv_yyx(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[1], (t)[2] p (v)[0]
+#define xv_yyy(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[1], (t)[2] p (v)[1]
+#define xv_yyz(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[1], (t)[2] p (v)[2]
+
+#define xv_yzx(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[2], (t)[2] p (v)[0]
+#define xv_yzy(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[2], (t)[2] p (v)[1]
+#define xv_yzz(t,p,v) (t)[0] p (v)[1], (t)[1] p (v)[2], (t)[2] p (v)[2]
+
+#define xv_zxx(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[0], (t)[2] p (v)[0]
+#define xv_zxy(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[0], (t)[2] p (v)[1]
+#define xv_zxz(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[0], (t)[2] p (v)[2]
+
+#define xv_zyx(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[1], (t)[2] p (v)[0]
+#define xv_zyy(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[1], (t)[2] p (v)[1]
+#define xv_zyz(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[1], (t)[2] p (v)[2]
+
+#define xv_zzx(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[2], (t)[2] p (v)[0]
+#define xv_zzy(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[2], (t)[2] p (v)[1]
+#define xv_zzz(t,p,v) (t)[0] p (v)[2], (t)[1] p (v)[2], (t)[2] p (v)[2]
+
 
 #define xv2_set(v,x,y)      (v)[0]=(x), (v)[1]=(y)
 #define xv3_set(v,x,y,z)    (v)[0]=(x), (v)[1]=(y), (v)[2]=(z)
@@ -172,6 +200,10 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv3_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1], (to)[2]=(from)[2]
 #define xv4_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1],\
                             (to)[2]=(from)[2], (to)[3]=(from)[3]
+
+#define xv_op(a,p,b,n, post)        (((a)[n] p (b)[n]) post)
+#define xv_applys(r,e,a,n,p,s,post) (r)[n] e ((((a)[n] p s)) post)
+#define xv_expr(r,e,a,p,b,n,post)   (r)[n] e ((xv_op(a,p,b,n,post)))
 
 #define xv2_map(r,e,a,p,b,post)\
     xv_expr(r,e,a,p,b,0,post),\
@@ -213,17 +245,17 @@ typedef MMX_UINT_PTR mmx_ptr;
     r[3]e(float)f(a[3])
 
 #define vec2_eval2(r,e,a,b,f)\
-    r[0] e (float)f(a[0],b[0]),\
-    r[1] e (float)f(a[1],b[1])
+    r[0]e(float)f(a[0],b[0]),\
+    r[1]e(float)f(a[1],b[1])
 #define vec3_eval2(r,e,a,b,f)\
-    r[0] e (float)f(a[0],b[0]),\
-    r[1] e (float)f(a[1],b[1]),\
-    r[2] e (float)f(a[1],b[2])
+    r[0]e(float)f(a[0],b[0]),\
+    r[1]e(float)f(a[1],b[1]),\
+    r[2]e(float)f(a[1],b[2])
 #define vec4_eval2(r,e,a,b,f)\
-    r[0] e (float)f(a[0],b[0]),\
-    r[1] e (float)f(a[1],b[1]),\
-    r[2] e (float)f(a[2],b[2]),\
-    r[3] e (float)f(a[3],b[3])
+    r[0]e(float)f(a[0],b[0]),\
+    r[1]e(float)f(a[1],b[1]),\
+    r[2]e(float)f(a[2],b[2]),\
+    r[3]e(float)f(a[3],b[3])
 
 #define xv2_dot(a,b)\
     xv_op(a,*,b,0,+0)+\
@@ -293,8 +325,7 @@ typedef MMX_UINT_PTR mmx_ptr;
 #define xv_cross(r,a,b,dim)     xv##dim##_cross(r, a, b)
 
 #define xv_lerp(r,a,t,b,dim)\
-    xv_apply(r,=,a,*,(1.0f - (t)),dim);\
-    xv_apply(r,+=,b,*,t, dim)
+    xv_apply(r,=,a,*,(1.0f - (t)),dim); xv_apply(r,+=,b,*,t, dim)
 
 #define xv_norm(o, q, dim)do{\
     float len_i_ = xv_len2(q,dim);\
@@ -564,45 +595,9 @@ MMX_API int xbox_intersects_box(const float *a, const float *b);
 #define MMX_DEG2RAD(a)  ((a)*(MMX_PI/180.0f))
 #define MMX_RAD2DEG(a)  ((a)*(180.0f/MMX_PI))
 
-/* make sure we have a correct 32-bit integer type */
-typedef int mmx__check_uint32_size[(sizeof(mmx_uint) == 4) ? 1 : -1];
-
-#ifdef __cplusplus
-/* C++ hates the C align makro so have to resort to templates */
-template<typename T> struct xv_alignof;
-template<typename T, int size_diff> struct xv_helper{enum {value = size_diff};};
-template<typename T> struct xv_helper<T,0>{enum {value = xv_alignof<T>::value};};
-template<typename T> struct xv_alignof{struct Big {T x; char c;}; enum {
-    diff = sizeof(Big) - sizeof(T), value = xv_helper<Big, diff>::value};};
-#define MMX_ALIGNOF(t) (xv_alignof<t>::value);
-#else
-#define MMX_ALIGNOF(t) ((char*)(&((struct {char c; t _h;}*)0)->_h) - (char*)0)
-#endif
-
-/* Pointer to Integer type conversion for pointer alignment */
-#if defined(__PTRDIFF_TYPE__) /* This case should work for GCC*/
-# define MMX_UINT_TO_PTR(x) ((void*)(__PTRDIFF_TYPE__)(x))
-# define MMX_PTR_TO_UINT(x) ((mmx_size)(__PTRDIFF_TYPE__)(x))
-#elif !defined(__GNUC__) /* works for compilers other than LLVM */
-# define MMX_UINT_TO_PTR(x) ((void*)&((char*)0)[x])
-# define MMX_PTR_TO_UINT(x) ((mmx_size)(((char*)x)-(char*)0))
-#elif defined(MMX_USE_FIXED_TYPES) /* used if we have <stdint.h> */
-# define MMX_UINT_TO_PTR(x) ((void*)(uintptr_t)(x))
-# define MMX_PTR_TO_UINT(x) ((uintptr_t)(x))
-#else /* generates warning but works */
-# define MMX_UINT_TO_PTR(x) ((void*)(x))
-# define MMX_PTR_TO_UINT(x) ((mmx_size)(x))
-#endif
-
 #define MMX_MIN(a,b) (((a)<(b))?(a):(b))
 #define MMX_MAX(a,b) (((a)>(b))?(a):(b))
 #define MMX_CLAMP(a,v, b) MMX_MIN(b, MMX_MAX(a,v))
-#define MMX_PTR_SUB(t, p, i) ((t*)((void*)((mmx_byte*)(p) - (i))))
-#define MMX_ALIGN_PTR(x, mask)\
-    (MMX_UINT_TO_PTR((MMX_PTR_TO_UINT((mmx_byte*)(x) + (mask-1)) & MMX_PTR_TO_UINT(~(mask-1)))))
-#define MMX_ALIGN_PTR_BACK(x, mask)\
-    (MMX_UINT_TO_PTR((MMX_PTR_TO_UINT((mmx_byte*)(x)) & ~(mask-1))))
-
 
 #ifndef MMX_SIN
 #define MMX_SIN sin
@@ -662,7 +657,8 @@ xv_inv_sqrt(float number)
 {
     float x2;
     const float threehalfs = 1.5f;
-    union {mmx_uint i; float f;} conv;
+    union {unsigned long i; float f;} conv;
+    conv.i = 0; /* I am not sure what happens if sizeof(i) > sizeof(float) so zero */
     conv.f = number;
     x2 = number * 0.5f;
     conv.i = 0x5f375A84 - (conv.i >> 1);
@@ -681,113 +677,26 @@ xv3_cross(float *result, const float *v1, const float *v2)
 }
 
 static void*
-xv_memcpy(void *dst0, const void *src0, mmx_size length)
+xv_memcpy(void *dst0, const void *src0, int size)
 {
-    mmx_ptr t;
-    typedef int word;
-    char *dst = dst0;
-    const char *src = src0;
-    if (length == 0 || dst == src)
-        goto done;
-
-    #define wsize sizeof(word)
-    #define wmask (wsize-1)
-    #define TLOOP(s) if (t) TLOOP1(s)
-    #define TLOOP1(s) do { s; } while (--t)
-
-    if (dst < src) {
-        t = (mmx_ptr)src; /* only need low bits */
-        if ((t | (mmx_ptr)dst) & wmask) {
-            if ((t ^ (mmx_ptr)dst) & wmask || length < wsize)
-                t = length;
-            else
-                t = wsize - (t & wmask);
-            length -= t;
-            TLOOP1(*dst++ = *src++);
-        }
-        t = length / wsize;
-        TLOOP(*(word*)(void*)dst = *(const word*)(const void*)src; src += wsize; dst += wsize);
-        t = length & wmask;
-        TLOOP(*dst++ = *src++);
-    } else {
-        src += length;
-        dst += length;
-        t = (mmx_ptr)src;
-        if ((t | (mmx_ptr)dst) & wmask) {
-            if ((t ^ (mmx_ptr)dst) & wmask || length <= wsize)
-                t = length;
-            else
-                t &= wmask;
-            length -= t;
-            TLOOP1(*--dst = *--src);
-        }
-        t = length / wsize;
-        TLOOP(src -= wsize; dst -= wsize; *(word*)(void*)dst = *(const word*)(const void*)src);
-        t = length & wmask;
-        TLOOP(*--dst = *--src);
-    }
-    #undef wsize
-    #undef wmask
-    #undef TLOOP
-    #undef TLOOP1
-done:
-    return (dst0);
+    int i;
+    for (i = 0; i < size; ++i)
+        *((char*)dst0 + i) = *((const char*)src0 + i);
+    return dst0;
 }
 
 MMX_INTERN void
-xv_memset(void *ptr, int c0, unsigned long size)
+xv_memset(void *ptr, int c0, int size)
 {
-    #define word unsigned
-    #define wsize sizeof(word)
-    #define wmask (wsize - 1)
-    unsigned char *dst = (unsigned char*)ptr;
-    unsigned int c = 0;
-    unsigned long t = 0;
-
-    if ((c = (unsigned char)c0) != 0) {
-        c = (c << 8) | c; /* at least 16-bits  */
-        if (sizeof(unsigned int) > 2)
-            c = (c << 16) | c; /* at least 32-bits*/
-        if (sizeof(unsigned int) > 4)
-            c = (c << 32) | c; /* at least 64-bits*/
-    }
-
-    dst = (unsigned char*)ptr;
-    if (size < 3 * wsize) {
-        while (size--) *dst++ = (unsigned char)c0;
-        return;
-    }
-
-    if ((t = MMX_PTR_TO_UINT(dst) & wmask) != 0) {
-        t = wsize -t;
-        size -= t;
-        do {
-            *dst++ = (unsigned char)c0;
-        } while (--t != 0);
-    }
-
-    t = size / wsize;
-    do {
-        *(word*)((void*)dst) = c;
-        dst += wsize;
-    } while (--t != 0);
-
-    t = (size & wmask);
-    if (t != 0) {
-        do {
-            *dst++ = (unsigned char)c0;
-        } while (--t != 0);
-    }
-
-    #undef word
-    #undef wsize
-    #undef wmask
+    int i;
+    for (i = 0; i < size; ++i)
+        *((char*)ptr + i) = (char)c0;
 }
 
-#define xv_zero_struct(s) xv_zero_size(&s, sizeof(s))
-#define xv_zero_array(p,n) xv_zero_size(p, (n) * sizeof((p)[0]))
+#define xv_zero_struct(s) xv_zero_size(&s, (int)sizeof(s))
+#define xv_zero_array(p,n) xv_zero_size(p, (n) * (int)sizeof((p)[0]))
 MMX_INTERN void
-xv_zero_size(void *ptr, mmx_size size)
+xv_zero_size(void *ptr, int size)
 {
     MMX_MEMSET(ptr, 0, size);
 }
@@ -1007,7 +916,7 @@ xm2_rotate(float *m, float angle)
     float c = (float)MMX_COS(MMX_DEG2RAD(angle));
 #else
     float s = (float)MMX_SIN(angle);
-    float c = (float)MMX_COS(angle));
+    float c = (float)MMX_COS(angle);
 #endif
     if (angle >= 0) {
         M(0,0) =  c; M(0,1) = s;
@@ -1284,8 +1193,10 @@ xm3_inverse_self(float *m)
 {
     float i[3*3];
     float det, inv_det;
+
     #define M(col, row) m[(col*3)+row]
     #define I(col, row) i[(col*3)+row]
+
     I(0,0) = M(1,1) * M(2,2) - M(1,2) * M(2,1);
     I(1,0) = M(1,2) * M(2,0) - M(1,0) * M(2,2);
     I(2,0) = M(1,0) * M(2,1) - M(1,1) * M(2,0);
