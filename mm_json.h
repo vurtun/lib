@@ -446,7 +446,7 @@ json_type(const struct json_token *tok)
 JSON_INTERN void
 json_deq(struct json_token *tok)
 {
-    if (tok->str[0] == '\"') {
+    if (tok->str[0] == '\"' && tok->len >= 2) {
         tok->str++; tok->len-=2;
     }
 }
@@ -885,7 +885,6 @@ json_strchr(const char *str, char c, int len)
     if (neg) return str;
     return NULL;
 }
-
 
 JSON_INTERN const char*
 json_path_parse_name(struct json_token *tok, const char *path,
