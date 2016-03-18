@@ -661,6 +661,8 @@ sched_pipe_read_back(struct sched_pipe *pipe, struct sched_subset_task *dst)
     SCHED_ASSERT(pipe);
     SCHED_ASSERT(dst);
 
+    /* we get hold of the read index for consistency,
+     * and do first pass starting at read count */
     read_count = pipe->read_count;
     to_use = read_count;
     while (1) {
@@ -673,7 +675,7 @@ sched_pipe_read_back(struct sched_pipe *pipe, struct sched_subset_task *dst)
         if (to_use >= write_index)
             to_use = pipe->read;
 
-        /* power of two sizes ensures we can perform AND for a moduls */
+        /* power of two sizes ensures we can perform AND for a modulus */
         actual_read = to_use & SCHED_PIPE_MASK;
         /* multiple potential readers means we should check if the data is valid
          * using an atomic compare exchange */
@@ -681,14 +683,18 @@ sched_pipe_read_back(struct sched_pipe *pipe, struct sched_subset_task *dst)
         if (previous == SCHED_PIPE_CAN_READ)
             break;
 
-        ++to_use;
-        /* update known read_count */
+        /* update known read count */
         read_count = pipe->read_count;
+        ++to_use;
     }
+
+    /* we update the read index using an atomic add, ws we've only read one piece
+     * of data. This ensures consitency of the read index, and the above loop ensures
+     * readers only read from unread data. */
     sched_atomic_add((volatile sched_int*)&pipe->read_count, 1);
     SCHED_BASE_MEMORY_BARRIER_ACQUIRE();
 
-    /* noew read data, ensuring we do so after above reads & CAS */
+    /* now read data, ensuring we do so after above reads & CAS */
     *dst = pipe->buffer[actual_read];
     pipe->flags[actual_read] = SCHED_PIPE_CAN_WRITE;
     return 1;
@@ -725,6 +731,7 @@ sched_pipe_read_front(struct sched_pipe *pipe, struct sched_subset_task *dst)
         else if (pipe->read >= front_read) return 0;
     }
 
+    /* now read data, ensuring we do so after above reads & CAS */
     *dst = pipe->buffer[actual_read];
     pipe->flags[actual_read] = SCHED_PIPE_CAN_WRITE;
     SCHED_BASE_MEMORY_BARRIER_RELEASE();
@@ -737,8 +744,6 @@ sched_pipe_read_front(struct sched_pipe *pipe, struct sched_subset_task *dst)
 SCHED_INTERN sched_int
 sched_pipe_write(struct sched_pipe *pipe, const struct sched_subset_task *src)
 {
-    /* returns false if we were to write. This is thread safe for the single
-     * writer, but should not be called by readers  */
     sched_uint actual_write;
     sched_uint write_index;
     SCHED_ASSERT(pipe);
