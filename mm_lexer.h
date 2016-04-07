@@ -108,35 +108,36 @@ LIMITATIONS:
 EXAMPLES:*/
 #if 0
     /* initialize lexer */
-    struct lexer_context lexer;
-    lexer_init(&lexer, text, text_length, NULL, test_log, NULL);
+    struct lexer lexer;
+    lexer_init(&lexer, text, text_length, NULL, NULL, NULL);
 
     /* parse tokens */
+    struct lexer_token tok;
     lexer_read(&lexer, &tok);
     lexer_expect_string(&lexer, "string");
-    lexer_expect_type(&lexer, LXR_TOKEN_NUMBER, LXR_TOKEN_HEX, &tok);
+    lexer_expect_type(&lexer, LEXER_TOKEN_NUMBER, LEXER_TOKEN_HEX, &tok);
     lexer_expect_any(&lexer, &tok);
 
     /* check and parse only if correct */
-    if (lexer_check_string(&lexer, "string"))
+    if (lexer_check_string(&lexer, "string")) { }
         /* correct string  */
-    if (lexer_check_type(&lexer, LXR_TOKEN_NUMBER, LXR_TOKEN_BIN, &tok))
+    if (lexer_check_type(&lexer, LEXER_TOKEN_NUMBER, LEXER_TOKEN_BIN, &tok)) { }
         /* correct type */
 
     /* only check but don't parse */
-    if (lexer_peek_string(&lexer, "string"))
+    if (lexer_peek_string(&lexer, "string")) { }
         /* correct string  */
-    if (lexer_peek_type(&lexer, LXR_TOKEN_PUNCTUATION, LXR_PUNCT_DOLLAR, &tok))
+    if (lexer_peek_type(&lexer, LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_DOLLAR, &tok)) { }
         /* correct type */
 
     /* token compare function */
-    if (!lexer_token_cmp(&tok, "string"))
+    if (!lexer_token_cmp(&tok, "string")) { }
         /* token holds string 'string' */
-    if (!lexer_token_icmp(&tok, "string"))
+    if (!lexer_token_icmp(&tok, "string")) { }
         /* token holds case independent string 'string' */
 
     /* copy token content into buffer */
-    char buffer[1024]
+    char buffer[1024];
     lexer_token_cpy(buffer, 1024, &tok);
 
     /* token to number conversion */
