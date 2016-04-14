@@ -25,33 +25,6 @@ QUICK:
     the query functions
     #define JSON_DELIMITER (character) before including this file
 
-CONCEPT:
-    The library contains three different parts.
-
-    1.) Tokenizer
-    The tokenizer divides the initial in memory JSON file string into
-    smaller interpreterable tokens and does not require any allocations at all.
-    This is achieved by using an iterator to walk over each object inside an
-    object and parsing each subobject with a new iterator.
-    You can use the tokenizer without the parser if you either only want to
-    parse a subsection of a JSON object or use a different language like Lua.
-
-    2.) Parser
-    The parser uses the tokenizer internally to read in a JSON file into a
-    token array. Each token thereby contains information about the JSON
-    object tree and you can access the tree by a number of utility functions.
-
-    3.) Utility
-    The library has a number of utility functions to access or parse and convert
-    a previously read token. In addition if you use the parser a number of functions
-    are provided to look for a token inside the parsed array.
-
-    It is important to note that while every valid JSON tree should be parsable
-    without problems, there is no guarantee that any invalid input is detected as
-    such, since the parser has only minimal validation.
-    In addition if you want to use the library with Multithreading make sure
-    to call `json_init` once before using.
-
 LICENSE: (zlib)
     Copyright (c) 2016 Micha Mettke
 
@@ -135,22 +108,18 @@ EXAMPLES:*/
 
     /* query token */
     struct json_token *t0 = json_query(toks, num, "map.entity[4].position");
-    struct json_token *t1 = json_query_del(toks, num, "map:entity[4]:position", ':');
 
     /* query string */
     char buffer[64];
     size_t size;
     json_query_string(buffer, 64, &size, toks, num, "map.entity[4].name");
-    json_query_string_del(buffer, 64, &size, toks, num, "map%entity[9]%name", '%');
 
     /* query number */
     json_number num;
     json_query_number(&num, toks, num, "map.soldier[2].position.x");
-    json_query_number_del(&num, toks, num, "map/soldier[2]/position.x", "/");
 
     /* query type */
     int type0 = json_query_number(toks, num, "map.soldier[2]);
-    int type1 = json_query_number_del(toks, num, "map_soldier[2], '_');
 
     /* sub-queries */
     json_token *entity = json_query(toks, num, "map.entity[4]");
@@ -176,11 +145,14 @@ extern "C" {
 #define JSON_API extern
 #endif
 
-typedef double json_number;
-
+/*-------------------------------------------------------------------------
+                                API
+  -------------------------------------------------------------------------*/
 #ifndef JSON_DELIMITER
 #define JSON_DELIMITER '.'
 #endif
+
+typedef double json_number;
 
 enum json_token_type {
     JSON_NONE,      /* invalid token */
@@ -193,6 +165,7 @@ enum json_token_type {
     JSON_NULL,      /* null constant token */
     JSON_MAX
 };
+
 struct json_token {
     enum json_token_type type;
     const char *str;
@@ -200,65 +173,50 @@ struct json_token {
     int children; /* number of direct child tokens */
     int sub; /* total number of subtokens (note: not pairs)*/
 };
+
 struct json_pair {
     struct json_token name;
     struct json_token value;
 };
 
-/*--------------------------------------------------------------------------
-                            TOKENIZER
-  -------------------------------------------------------------------------*/
-struct json_iter {
-    int len;
-    int err;
-    int depth;
-    const char *go;
-    const char *src;
-};
-JSON_API struct json_iter json_begin(const char *json, int length);
-JSON_API struct json_iter json_read(struct json_token*, const struct json_iter*);
-JSON_API struct json_iter json_parse(struct json_pair*, const struct json_iter*);
-
-/*-------------------------------------------------------------------------
-                                PARSER
-  -------------------------------------------------------------------------*/
 enum json_status {
     JSON_OK = 0,
     JSON_INVAL,
     JSON_OUT_OF_TOKEN,
     JSON_PARSING_ERROR
 };
-JSON_API int json_num(const char *json, int length);
-JSON_API enum json_status json_load(struct json_token *toks, int max, int *read,
-                                    const char *json, int length);
 
-/*-------------------------------------------------------------------------
-                                QUERY
-  -------------------------------------------------------------------------*/
-JSON_API struct json_token *json_query(struct json_token *toks, int count,
-                                        const char *path);
-JSON_API struct json_token *json_query_del(struct json_token *toks, int count,
-                                            const char *path, char del);
-JSON_API int json_query_number(json_number*, struct json_token *toks,
-                                 int count, const char *path);
-JSON_API int json_query_number_del(json_number*, struct json_token *toks,
-                                    int count, const char *path, char del);
-JSON_API int json_query_string(char*, int max, int *size, struct json_token*,
-                                int count, const char *path);
-JSON_API int json_query_string_del(char*, int max, int *size, struct json_token*,
-                                    int count, const char *path, char del);
-JSON_API int json_query_type(struct json_token *toks, int count, const char *path);
-JSON_API int json_query_type_del(struct json_token *toks, int count, const char*, char);
+/* parse JSON into token array */
+JSON_API int                json_num(const char *json, int length);
+JSON_API enum json_status   json_load(struct json_token *toks, int max, int *read, const char *json, int length);
+
+/* access nodes inside token array */
+JSON_API struct json_token *json_query(struct json_token *toks, int count, const char *path);
+JSON_API int                json_query_number(json_number*, struct json_token *toks, int count, const char *path);
+JSON_API int                json_query_string(char*, int max, int *size, struct json_token*, int count, const char *path);
+JSON_API int                json_query_type(struct json_token *toks, int count, const char *path);
 
 /*--------------------------------------------------------------------------
-                            UTILITY
+                                INTERNAL
   -------------------------------------------------------------------------*/
-JSON_API int json_cmp(const struct json_token*, const char*);
-JSON_API int json_cpy(char*, int, const struct json_token*);
-JSON_API int json_convert(json_number *, const struct json_token*);
-JSON_API void json_init(void);
-/* this function initializes the internal parser lookup tables.
- * Only needs to be called at the beginning if used with multithreading */
+struct json_iter {
+    int len;
+    unsigned short err;
+    unsigned depth;
+    const char *go;
+    const char *src;
+};
+
+/* tokenizer */
+JSON_API struct json_iter   json_begin(const char *json, int length);
+JSON_API struct json_iter   json_read(struct json_token*, const struct json_iter*);
+JSON_API struct json_iter   json_parse(struct json_pair*, const struct json_iter*);
+
+/* utility */
+JSON_API int                json_cmp(const struct json_token*, const char*);
+JSON_API int                json_cpy(char*, int, const struct json_token*);
+JSON_API int                json_convert(json_number *, const struct json_token*);
+JSON_API void               json_init(void); /* Inits internal parser lookup tables. (only required if used with MT */
 
 #ifdef __cplusplus
 }
@@ -946,8 +904,7 @@ json_path_parse_array(struct json_token *array, const struct json_token *token)
 }
 
 JSON_API struct json_token*
-json_query_del(struct json_token *toks, int count,
-    const char *path, char delemiter)
+json_query(struct json_token *toks, int count, const char *path)
 {
     int i = 0;
     int begin = 1;
@@ -969,7 +926,7 @@ json_query_del(struct json_token *toks, int count,
     array.len = 0;
     array.str = NULL;
 
-    path = json_path_parse_name(&name, path, delemiter);
+    path = json_path_parse_name(&name, path, JSON_DELIMITER);
     while (1) {
         if (iter->type == JSON_OBJECT || iter->type == JSON_ARRAY || begin) {
             /* setup iteration over elements inside a object or array */
@@ -1010,7 +967,7 @@ json_query_del(struct json_token *toks, int count,
                     iter = &toks[i];
                 }
                 if (!path) return iter;
-                path = json_path_parse_name(&name, path, delemiter);
+                path = json_path_parse_name(&name, path, JSON_DELIMITER);
             }
             continue;
         }
@@ -1031,7 +988,7 @@ json_query_del(struct json_token *toks, int count,
 
                 /* look deeper into child object/array */
                 iter = &toks[++i];
-                path = json_path_parse_name(&name, path, delemiter);
+                path = json_path_parse_name(&name, path, JSON_DELIMITER);
             } else {
                 /* key is not correct iterate until end of object */
                 if (++obj.index >= obj.size)
@@ -1050,13 +1007,9 @@ json_query_del(struct json_token *toks, int count,
     return iter;
 }
 
-JSON_API struct json_token*
-json_query(struct json_token *toks, int count, const char *path)
-{return json_query_del(toks, count, path, JSON_DELIMITER);}
-
 JSON_API int
-json_query_number_del(json_number *num, struct json_token *toks, int count,
-    const char *path, char del)
+json_query_number(json_number *num, struct json_token *toks, int count,
+    const char *path)
 {
     struct json_token *tok;
     JSON_ASSERT(toks);
@@ -1066,21 +1019,17 @@ json_query_number_del(json_number *num, struct json_token *toks, int count,
     if (!toks || !count || !num || !path)
         return JSON_NONE;
 
-    tok = json_query_del(toks, count, path, del);
+    tok = json_query(toks, count, path);
     if (!tok) return JSON_NONE;
     if (tok->type != JSON_NUMBER)
         return tok->type;
     return json_convert(num, tok);
+
 }
 
 JSON_API int
-json_query_number(json_number *num, struct json_token *toks, int count,
-    const char *path)
-{return json_query_number_del(num, toks, count, path, JSON_DELIMITER);}
-
-JSON_API int
-json_query_string_del(char *buffer, int max, int *size,
-    struct json_token *toks, int count, const char *path, char del)
+json_query_string(char *buffer, int max, int *size,
+    struct json_token *toks, int count, const char *path)
 {
     struct json_token *tok;
     JSON_ASSERT(toks);
@@ -1091,22 +1040,17 @@ json_query_string_del(char *buffer, int max, int *size,
     if (!toks || !count || !buffer || !size || !path)
         return JSON_NONE;
 
-    tok = json_query_del(toks, count, path, del);
+    tok = json_query(toks, count, path);
     if (!tok) return JSON_NONE;
     if (tok->type != JSON_STRING)
         return tok->type;
     *size = json_cpy(buffer, max, tok);
     return tok->type;
+
 }
 
 JSON_API int
-json_query_string(char *buffer, int max, int *size,
-    struct json_token *toks, int count, const char *path)
-{return json_query_string_del(buffer, max, size, toks, count, path, JSON_DELIMITER);}
-
-JSON_API int
-json_query_type_del(struct json_token *toks, int count, const char *path,
-    char del)
+json_query_type(struct json_token *toks, int count, const char *path)
 {
     struct json_token *tok;
     JSON_ASSERT(toks);
@@ -1115,13 +1059,9 @@ json_query_type_del(struct json_token *toks, int count, const char *path,
     if (!toks || !count || !path)
         return JSON_NONE;
 
-    tok = json_query_del(toks, count, path, del);
+    tok = json_query(toks, count, path);
     if (!tok) return JSON_NONE;
     return tok->type;
 }
-
-JSON_API int
-json_query_type(struct json_token *toks, int count, const char *path)
-{return json_query_type_del(toks, count, path, JSON_DELIMITER);}
 
 #endif
