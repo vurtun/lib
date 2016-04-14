@@ -63,39 +63,6 @@ USAGE:
 
 EXAMPLES:*/
 #if 0
-    /* Tokenizer example */
-    const char *json = "{a:"test",b:5, c:[0,1,2,4,5]}";
-    int len = strlen(json);
-
-    /* create iterator  */
-    struct json_iter iter;
-    iter = json_begin(json, len);
-
-    /* read token pair */
-    struct json_pair pair;
-    iter = json_parse(&pair, &iter);
-    assert(!json_cmp(&pair.name, "a"));
-    assert(!json_cmp(&pair.value, "test"));
-    assert(pair.value.type == JSON_STRING);
-
-    /* convert token to number */
-    json_number num;
-    iter = json_parse(&pair, &iter);
-    json_test_assert(json_convert(&num, &pair.value) == JSON_NUMBER);
-    assert(num == 5.0);
-
-    /* read subobject (array/objects) */
-    iter = json_parse(&pair, &iter);
-    json_test_assert(pair.value.type == JSON_ARRAY);
-
-    struct json_iter array = json_begin(pair.value.str, pair.value.len);
-    iter = json_read(&tok, &array);
-    while (array.src) {
-        /* read single token */
-        array = json_read(&tok, &array);
-    }
-#endif
-#if 0
     /* Parser example */
     const char *json = "{...}";
     size_t len = strlen(json);
