@@ -1015,7 +1015,7 @@ WBY_INTERN int
 wby_connection_set_nonblocking(struct wby_connection *conn)
 {
     wby_size count = conn->blocking_count;
-    if (conn->flags & WBY_CON_FLAG_ALIVE != 0 && count == 1) {
+    if ((conn->flags & WBY_CON_FLAG_ALIVE) != 0 && count == 1) {
         if (wby_socket_set_blocking(WBY_SOCK(conn->socket), 0) != WBY_OK) {
             wby_dbg(conn->log, "failed to switch connection to non-blocking");
             conn->flags &= (unsigned short)~WBY_CON_FLAG_ALIVE;
