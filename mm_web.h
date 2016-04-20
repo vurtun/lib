@@ -522,6 +522,7 @@ wby_read_buffered_data(int *data_left, struct wby_buffer* buffer,
 #include <winsock2.h>
 typedef SOCKET wby_socket;
 typedef int wby_socklen;
+typedef char wby_sockopt;
 
 #if defined(__GNUC__)
 #define WBY_ALIGN(x) __attribute__((aligned(x)))
@@ -592,6 +593,7 @@ wby_socket_is_blocking_error(int error)
 
 typedef int wby_socket;
 typedef socklen_t wby_socklen;
+typedef int wby_sockopt;
 
 #define WBY_ALIGN(x) __attribute__((aligned(x)))
 #define WBY_INVALID_SOCKET (-1)
@@ -633,7 +635,7 @@ wby_socket_set_blocking(wby_socket socket, int blocking)
 WBY_INTERN int
 wby_socket_config_incoming(wby_socket socket)
 {
-    int off = 0;
+    wby_sockopt off = 0;
     int err;
     if ((err = wby_socket_set_blocking(socket, 0)) != WBY_OK) return err;
     setsockopt(socket, SOL_SOCKET, SO_LINGER, (const char*) &off, sizeof(int));
@@ -1013,7 +1015,7 @@ WBY_INTERN int
 wby_connection_set_nonblocking(struct wby_connection *conn)
 {
     wby_size count = conn->blocking_count;
-    if (count == 1) {
+    if ((conn->flags & WBY_CON_FLAG_ALIVE) != 0 && count == 1) {
         if (wby_socket_set_blocking(WBY_SOCK(conn->socket), 0) != WBY_OK) {
             wby_dbg(conn->log, "failed to switch connection to non-blocking");
             conn->flags &= (unsigned short)~WBY_CON_FLAG_ALIVE;
@@ -1508,6 +1510,10 @@ wby_response_end(struct wby_con *conn)
     }
     /* Flush buffers */
     wby_connection_push(conn_priv, "", 0);
+
+    /* Close connection when Content-Length is zero that maybe HTTP/1.0. */
+    if (conn->request.content_length == 0)
+        wby_connection_close(conn_priv);
 }
 
 /* ---------------------------------------------------------------
@@ -1569,7 +1575,7 @@ wby_start(struct wby_server *server, void *memory)
 {
     wby_size i;
     wby_socket sock;
-    int on = 1;
+    wby_sockopt on = 1;
     wby_byte *buffer = (wby_byte*)memory;
     struct sockaddr_in bind_addr;
     WBY_STORAGE const wby_size wby_conn_align = WBY_ALIGNOF(struct wby_connection);

@@ -86,7 +86,7 @@ EXAMPLES:*/
     json_query_number(&num, toks, num, "map.soldier[2].position.x");
 
     /* query type */
-    int type0 = json_query_number(toks, num, "map.soldier[2]);
+    int type0 = json_query_number(toks, num, "map.soldier[2]");
 
     /* sub-queries */
     json_token *entity = json_query(toks, num, "map.entity[4]");
@@ -258,7 +258,7 @@ JSON_GLOBAL char json_go_utf8[256];
 JSON_GLOBAL char json_go_esc[256];
 JSON_GLOBAL char json_go_num[256];
 JSON_GLOBAL const struct json_iter JSON_ITER_NULL = {0,0,0,0,0};
-JSON_GLOBAL const struct json_token JSON_TOKEN_NULL = {0,0,0,0,JSON_NONE};
+JSON_GLOBAL const struct json_token JSON_TOKEN_NULL = {JSON_NONE,0,0,0,0};
 JSON_GLOBAL int json_is_initialized;
 
 /*--------------------------------------------------------------------------
