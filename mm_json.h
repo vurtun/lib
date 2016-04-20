@@ -258,7 +258,7 @@ JSON_GLOBAL char json_go_utf8[256];
 JSON_GLOBAL char json_go_esc[256];
 JSON_GLOBAL char json_go_num[256];
 JSON_GLOBAL const struct json_iter JSON_ITER_NULL = {0,0,0,0,0};
-JSON_GLOBAL const struct json_token JSON_TOKEN_NULL = {0,0,0,0,JSON_NONE};
+JSON_GLOBAL const struct json_token JSON_TOKEN_NULL = {JSON_NONE,0,0,0,0};
 JSON_GLOBAL int json_is_initialized;
 
 /*--------------------------------------------------------------------------
