@@ -86,7 +86,7 @@ EXAMPLES:*/
     json_query_number(&num, toks, num, "map.soldier[2].position.x");
 
     /* query type */
-    int type0 = json_query_number(toks, num, "map.soldier[2]);
+    int type0 = json_query_number(toks, num, "map.soldier[2]");
 
     /* sub-queries */
     json_token *entity = json_query(toks, num, "map.entity[4]");
