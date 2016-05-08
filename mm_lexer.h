@@ -897,7 +897,7 @@ lexer_read_white_space(struct lexer *lexer, int current_line)
                 if (lexer->current >= lexer->end || !*lexer->current)
                     return 0;
                 continue;
-            } else if ((*lexer->current + 1) == '*') {
+            } else if (*(lexer->current + 1) == '*') {
                 /* C style comments */
                 lexer->current++;
                 while (1) {
