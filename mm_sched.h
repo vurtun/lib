@@ -329,7 +329,7 @@ template<typename T> struct sched_alignof{struct Big {T x; char c;}; enum {
 /* Helper */
 #define SCHED_UNUSED(x) ((void)x)
 #define SCHED_MIN(a,b) (((a)<(b))?(a):(b))
-#define SCHED_MAX(a,b) (((a)>(b))?(a):(b))
+#define SCHEDULER_MAX(a,b) (((a)>(b))?(a):(b))
 
 #ifndef SCHED_MEMSET
 #define SCHED_MEMSET sched_memset
@@ -962,7 +962,7 @@ scheduler_add(struct sched_task *task, struct scheduler *s,
     task->run_count = -1;
 
     /* divide task up and add to pipe */
-    range_to_run = SCHED_MAX(1, task->size / s->partitions_num);
+    range_to_run = SCHEDULER_MAX(1, task->size / s->partitions_num);
     range_left = subtask.partition.end - subtask.partition.start;
     num_added = 0;
     while (range_left) {
