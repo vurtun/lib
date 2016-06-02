@@ -478,7 +478,7 @@ sched_num_hw_threads(void)
 SCHED_INTERN struct sched_event
 sched_event_create(void)
 {
-    sched_event ret;
+    struct sched_event ret;
     ret.event = CreateEvent(NULL, TRUE, FALSE, NULL);
     ret.count_waiters = 0;
     return ret;
