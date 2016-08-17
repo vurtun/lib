@@ -1,5 +1,5 @@
 /*
-    mm_json.h - zlib - Micha Mettke
+    json.h - public domain - Micha Mettke
 
 ABOUT:
     This is a single header JSON parser header and implementation without
