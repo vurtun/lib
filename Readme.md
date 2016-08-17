@@ -5,11 +5,11 @@ My single header libraries for C/C++.
 
 |library | lastest version | category | LoC | license | description
 | --------------------- | ---- | -------- | --- | --- | --------------------------------
-|**mm_lexer.h** | 1.00 | parser | 1155 | zlib | simple lexer for C-like languages
-|**mm_json.h** | 1.00 | parser | 848 | zlib | non-allocating json parser
-|**mm_sched.h** | 1.00 | multithreading | 699 | zlib | multithreaded task scheduler
-|**mm_vec.h** | 0.02 | math | 2240 | zlib | vector math
-|**mm_web.h** | 1.00 | network | 1455 | BSD |  lightweight webserver
+|**lexer.h** | 1.00 | parser | 1155 | zlib | simple lexer for C-like languages
+|**json.h** | 1.00 | parser | 848 | zlib | non-allocating json parser
+|**sched.h** | 1.00 | multithreading | 699 | zlib | multithreaded task scheduler
+|**vec.h** | 0.02 | math | 2240 | zlib | vector math
+|**web.h** | 1.00 | network | 1455 | BSD |  lightweight webserver
 
 Total libraries: 5  
 Total lines of C code: 5608
