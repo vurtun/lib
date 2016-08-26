@@ -912,7 +912,7 @@ json_query(struct json_token *toks, int count, const char *path)
                 /* array object so set iterator to array index */
                 if (!json_path_parse_array(&array, &name))
                     return NULL;
-                if ((i+1) >= count)
+                if ((i+1) > count)
                     return NULL;
                 if (array.len < 1)
                     return NULL;
