@@ -1,5 +1,5 @@
 /*
-    web.h - BSD LICENSE - Andreas Fredriksson, Micha Mettke
+    web.h - BSD LICENSE - Andreas Fredriksson
 
 ABOUT:
     This is a web server intended for debugging tools inside a
@@ -885,6 +885,7 @@ wby_sha1_init(struct wby_sha1 *s)
     s->state[2] = 0x98badcfe;
     s->state[3] = 0x10325476;
     s->state[4] = 0xc3d2e1f0;
+
     s->msg_size[0] = 0;
     s->msg_size[1] = 0;
     s->buf_used = 0;
@@ -902,6 +903,7 @@ wby_sha1_update(struct wby_sha1 *s, const void *data_, wby_size size)
         wby_size buf_space = sizeof(s->buffer) - s->buf_used;
         wby_size copy_size = (remain < buf_space) ? remain : buf_space;
         memcpy(s->buffer + s->buf_used, data, copy_size);
+
         s->buf_used += copy_size;
         data += copy_size;
         remain -= copy_size;
@@ -982,16 +984,20 @@ struct wby_connection {
     struct wby_con public_data;
     unsigned short flags;
     unsigned short state;
+
     wby_ptr socket;
     wby_log_f log;
+
     wby_size request_buffer_size;
-    wby_size io_buffer_size;
     struct wby_buffer header_buf;
     struct wby_buffer io_buf;
+    wby_size io_buffer_size;
+
     int header_body_left;
     int io_data_left;
     int continue_data_left;
     int body_bytes_read;
+
     struct wby_frame ws_frame;
     wby_byte ws_opcode;
     wby_size blocking_count;
@@ -1558,6 +1564,7 @@ wby_init(struct wby_server *srv, const struct wby_config *cfg, wby_size *needed_
     WBY_ASSERT(srv);
     WBY_ASSERT(cfg);
     WBY_ASSERT(needed_memory);
+
     memset(srv, 0, sizeof(*srv));
     srv->config = *cfg;
     WBY_ASSERT(cfg->dispatch);
@@ -1608,6 +1615,7 @@ wby_start(struct wby_server *server, void *memory)
         wby_dbg(server->config.log, "failed to initialized server socket: %d", wby_socket_error());
         goto error;
     }
+
     setsockopt(WBY_SOCK(sock), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
     #ifdef __APPLE__ /* Don't generate SIGPIPE when writing to dead socket, we check all writes. */
     signal(SIGPIPE, SIG_IGN);
