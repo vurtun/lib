@@ -520,6 +520,7 @@ wby_read_buffered_data(int *data_left, struct wby_buffer* buffer,
  * ---------------------------------------------------------------*/
 #ifdef _WIN32
 #include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
 typedef SOCKET wby_socket;
 typedef int wby_socklen;
 typedef char wby_sockopt;
@@ -1580,6 +1581,10 @@ wby_init(struct wby_server *srv, const struct wby_config *cfg, wby_size *needed_
 WBY_API int
 wby_start(struct wby_server *server, void *memory)
 {
+#ifdef WIN32
+	WSADATA wsaData;
+	WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
     wby_size i;
     wby_socket sock;
     wby_sockopt on = 1;
@@ -1653,6 +1658,9 @@ error:
 WBY_API void
 wby_stop(struct wby_server *srv)
 {
+#ifdef WIN32
+	WSACleanup();
+#endif
     wby_size i;
     wby_socket_close(WBY_SOCK(srv->socket));
     for (i = 0; i < srv->con_count; ++i)
