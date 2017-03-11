@@ -1518,7 +1518,7 @@ wby_response_end(struct wby_con *conn)
     wby_connection_push(conn_priv, "", 0);
 
     /* Close connection when Content-Length is zero that maybe HTTP/1.0. */
-    if (conn->request.content_length == 0)
+    if (conn->request.content_length == 0 && !wby_con_is_websocket_request(conn))
         wby_connection_close(conn_priv);
 }
 
