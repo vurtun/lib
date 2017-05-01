@@ -1879,3 +1879,4 @@ xq_from_mat3(float *q, const float *m)
     #undef M
 }
 
+#endif
