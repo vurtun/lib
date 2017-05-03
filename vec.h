@@ -192,9 +192,9 @@ extern "C" {
 #define xv3_set(v,x,y,z)    (v)[0]=(x), (v)[1]=(y), (v)[2]=(z)
 #define xv4_set(v,x,y,z,w)  (v)[0]=(x), (v)[1]=(y), (v)[2]=(z), (v)[3]=(w)
 
-#define xv2_zero(v,x,y)      xv2_set(v,0,0)
-#define xv3_zero(v,x,y,z)    xv3_set(v,0,0,0)
-#define xv4_zero(v,x,y,z,w)  xv4_set(v,0,0,0,0)
+#define xv2_zero(v) xv2_set(v,0,0)
+#define xv3_zero(v) xv3_set(v,0,0,0)
+#define xv4_zero(v) xv4_set(v,0,0,0,0)
 
 #define xv2_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1]
 #define xv3_cpy(to,from)    (to)[0]=(from)[0], (to)[1]=(from)[1], (to)[2]=(from)[2]
