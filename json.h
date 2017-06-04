@@ -708,6 +708,7 @@ json_lcmp(const struct json_token* tok, const char* str, int len)
     JSON_ASSERT(tok);
     JSON_ASSERT(str);
     if (!tok || !str || !len) return 1;
+    if (tok->len != len) return 1;
     for (i = 0; (i < tok->len && i < len); i++, str++){
         if (tok->str[i] != *str)
             return 1;

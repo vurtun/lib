@@ -291,6 +291,10 @@ struct wby_server {
     /* number of active connection */
     struct wby_connection *con;
     /* connections */
+#ifdef _WIN32
+    int windows_socket_initialized;
+    /* whether WSAStartup had to be called on Windows */
+#endif
 };
 
 WBY_API void wby_init(struct wby_server*, const struct wby_config*,
@@ -520,6 +524,7 @@ wby_read_buffered_data(int *data_left, struct wby_buffer* buffer,
  * ---------------------------------------------------------------*/
 #ifdef _WIN32
 #include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
 typedef SOCKET wby_socket;
 typedef int wby_socklen;
 typedef char wby_sockopt;
@@ -1518,7 +1523,7 @@ wby_response_end(struct wby_con *conn)
     wby_connection_push(conn_priv, "", 0);
 
     /* Close connection when Content-Length is zero that maybe HTTP/1.0. */
-    if (conn->request.content_length == 0)
+    if (conn->request.content_length == 0 && !wby_con_is_websocket_request(conn))
         wby_connection_close(conn_priv);
 }
 
@@ -1610,6 +1615,16 @@ wby_start(struct wby_server *server, void *memory)
 
     /* server socket setup */
     sock = (wby_ptr)socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef _WIN32
+    if (sock == INVALID_SOCKET && WSAGetLastError() == WSANOTINITIALISED) {
+        /* Make sure WSAStartup has been called. */
+        wby_dbg(server->config.log, "Calling WSAStartup.");
+        WSADATA wsaData;
+        WSAStartup(MAKEWORD(2, 2), &wsaData);
+        sock = (wby_ptr)socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        server->windows_socket_initialized = 1;
+    }
+#endif
     wby_dbg(server->config.log, "Server socket = %d", (int)sock);
     if (!wby_socket_is_valid(sock)) {
         wby_dbg(server->config.log, "failed to initialized server socket: %d", wby_socket_error());
@@ -1653,6 +1668,11 @@ error:
 WBY_API void
 wby_stop(struct wby_server *srv)
 {
+#ifdef _WIN32
+    if (srv->windows_socket_initialized) {
+        WSACleanup();
+    }
+#endif
     wby_size i;
     wby_socket_close(WBY_SOCK(srv->socket));
     for (i = 0; i < srv->con_count; ++i)
