@@ -794,7 +794,7 @@ json_cmp(const struct json_token* tok, const char* str)
     JSON_ASSERT(str);
     if (!tok || !str) return 1;
     for (i = 0; (i < tok->len); i++, str++){
-        if (*str == '\0'|| tok->str[i] != *str)
+        if (tok->str[i] != *str)
             return 1;
     }
     //Check we have exhausted str
