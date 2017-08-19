@@ -793,11 +793,12 @@ json_cmp(const struct json_token* tok, const char* str)
     JSON_ASSERT(tok);
     JSON_ASSERT(str);
     if (!tok || !str) return 1;
-    for (i = 0; (i < tok->len && *str); i++, str++){
+    for (i = 0; (i < tok->len); i++, str++){
         if (tok->str[i] != *str)
             return 1;
     }
-    return 0;
+    //Check we have exhausted str
+    return *str == '\0' ? 0 : 1;
 }
 /*--------------------------------------------------------------------------
                                 TOKENIZER
