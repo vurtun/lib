@@ -96,7 +96,7 @@ EXAMPLES:*/
         scheduler_start(&sched, memory);
         {
             struct sched_task task;
-            scheduler_add(&sched, &task, parallel_task, 0, 1);
+            scheduler_add(&sched, &task, parallel_task, 0, 1, 1);
             scheduler_join(&sched, &task);
         }
         scheduler_stop(&sched);
@@ -122,28 +122,27 @@ extern "C" {
 #endif
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
-#include <stdint.h>
-#ifndef SCHED_UINT32
-#define SCHED_UINT32 uint32_t
-#endif
-#ifndef SCHED_INT32
-#define SCHED_INT32 int32_t
-#endif
-#ifndef SCHED_UINT_PTR
-#define SCHED_UINT_PTR uintptr_t
-#endif
+  #include <stdint.h>
+  #ifndef SCHED_UINT32
+    #define SCHED_UINT32 uint32_t
+  #endif
+  #ifndef SCHED_INT32
+    #define SCHED_INT32 int32_t
+  #endif
+  #ifndef SCHED_UINT_PTR
+    #define SCHED_UINT_PTR uintptr_t
+  #endif
 #else
-#ifndef SCHED_UINT32
-#define SCHED_UINT32 unsigned int
+  #ifndef SCHED_UINT32
+    #define SCHED_UINT32 unsigned int
+  #endif
+  #ifndef SCHED_INT32
+    #define SCHED_INT32 int
+  #endif
+  #ifndef SCHED_UINT_PTR
+    #define SCHED_UINT_PTR unsigned long
+  #endif
 #endif
-#ifndef SCHED_INT32
-#define SCHED_INT32 int
-#endif
-#ifndef SCHED_UINT_PTR
-#define SCHED_UINT_PTR unsigned long
-#endif
-#endif
-
 typedef unsigned char sched_byte;
 typedef SCHED_UINT32 sched_uint;
 typedef SCHED_INT32 sched_int;
@@ -151,9 +150,11 @@ typedef SCHED_UINT_PTR sched_size;
 typedef SCHED_UINT_PTR sched_ptr;
 
 struct scheduler;
-typedef void(*sched_run)(void*, struct scheduler*, unsigned int begin,
-    unsigned int end, unsigned int thread_num);
-
+struct sched_task_partition {
+    sched_uint start;
+    sched_uint end;
+};
+typedef void(*sched_run)(void*, struct scheduler*, struct sched_task_partition, sched_uint thread_num);
 struct sched_task {
     void *userdata;
     /* custum userdata to use in callback userdata */
@@ -161,8 +162,15 @@ struct sched_task {
     /* function working on the task owner structure */
     sched_uint size;
     /* number of elements inside the set */
+    sched_uint min_range;
+    /* minimum size of range when splitting a task set into partitions.
+     * This should be set to a value which results in computation effort of at
+     * least 10k clock cycles to minimiye task scheduler overhead.
+     * NOTE: The last partition will be smaller than min_range if size is not a
+     * multiple of min_range (lit.: grain size) */
+    /* --------- INTERNAL ONLY -------- */
     volatile sched_int run_count;
-    /* INTERNAL ONLY */
+    sched_uint range_to_run;
 };
 #define sched_task_done(t) (!(t)->run_count)
 
@@ -180,7 +188,7 @@ struct sched_profiling {
     /* callback called if a thread is woken up */
 };
 
-struct sched_event;
+struct sched_semaphore;
 struct sched_thread_args;
 struct sched_pipe;
 
@@ -197,11 +205,12 @@ struct scheduler {
     /* flag whether the scheduler is running  */
     volatile sched_int thread_running;
     /* number of thread that are currently running */
-    volatile sched_int thread_active;
+    volatile sched_int thread_waiting;
     /* number of thread that are currently active */
     unsigned partitions_num;
+    unsigned partitions_init_num;
     /* divider for the array handled by a task */
-    struct sched_event *event;
+    struct sched_semaphore *new_task_semaphore;
     /* os event to signal work */
     sched_int have_threads;
     /* flag whether the os threads have been created */
@@ -229,7 +238,7 @@ SCHED_API void scheduler_start(struct scheduler*, void *memory);
     Input:
     -   previously allocated memory to run the scheduler with
 */
-SCHED_API void scheduler_add(struct sched_task*, struct scheduler*, sched_run func, void *pArg, sched_uint size);
+SCHED_API void scheduler_add(struct scheduler*, struct sched_task*, sched_run func, void *pArg, sched_uint size, sched_uint min_range);
 /*  this function adds a task into the scheduler to execute and directly returns
  *  if the pipe is not full. Otherwise the task is run directly. Should only be
  *  called from main thread or within task handler.
@@ -253,10 +262,12 @@ SCHED_API void scheduler_wait(struct scheduler*);
 /*  this function waits for all task inside the scheduler to finish. Not
  *  guaranteed to work unless we know we are in a situation where task aren't
  *  being continuosly added. */
-SCHED_API void scheduler_stop(struct scheduler*);
+SCHED_API void scheduler_stop(struct scheduler*, int doWait);
 /*  this function waits for all task inside the scheduler to finish and stops
  *  all threads and shuts the scheduler down. Not guaranteed to work unless we
- *  are in a situation where task aren't being continuosly added. */
+ *  are in a situation where task aren't being continuosly added.
+    Input:
+    -   boolean flag specifing to wait for all task to finish before stopping */
 
 #ifdef __cplusplus
 }
@@ -447,12 +458,9 @@ sched_atomic_add(volatile sched_int *dst, sched_int value)
 #define SCHED_THREAD_LOCAL __declspec(thread)
 
 typedef HANDLE sched_thread;
-struct sched_event {
-    HANDLE event;
-    sched_int count_waiters;
+struct sched_semaphore {
+    HANDLE sem;
 };
-const sched_uint SCHED_INFINITE = INFINITE;
-
 SCHED_INTERN sched_int
 sched_thread_create(sched_thread *returnid, DWORD(WINAPI *StartFunc)(void*), void *arg)
 {
@@ -475,39 +483,30 @@ sched_num_hw_threads(void)
     return sysinfo.dwNumberOfProcessors;
 }
 
-SCHED_INTERN struct sched_event
-sched_event_create(void)
+SCHED_INTERN void
+sched_semaphore_create(struct sched_semaphore *s)
 {
-    struct sched_event ret;
-    ret.event = CreateEvent(NULL, TRUE, FALSE, NULL);
-    ret.count_waiters = 0;
-    return ret;
+    s->sem = CreateSemaphore(0,0,MAXLONG,0);
 }
 
 SCHED_INTERN void
-sched_event_close(struct sched_event *eventid)
+sched_semaphore_close(struct sched_semaphore *s)
 {
-    CloseHandle(eventid->event);
+    CloseHandle(s->sem);
 }
 
 SCHED_INTERN void
-sched_event_wait(struct sched_event *eventid, sched_int ms)
+sched_semaphore_wait(struct sched_semaphore *s)
 {
-    DWORD ret_val;
-    sched_int prev;
-    sched_atomic_add(&eventid->count_waiters, 1);
-    ret_val = WaitForSingleObject(eventid->event, ms);
-    prev = sched_atomic_add(&eventid->count_waiters, -1);
-    if (prev == 1) /* we were the last to awaken, so reset event. */
-        ResetEvent(eventid->event);
-    SCHED_ASSERT(ret_val != WAIT_FAILED);
-    SCHED_ASSERT(prev != 0);
+    DWORD ret = WaitForSingleObject(s->sem, INFINITE);
+    SCHED_ASSERT(ret != WAIT_FAILED);
 }
 
 SCHED_INTERN void
-sched_event_signal(struct sched_event *eventid)
+sched_semaphore_signal(struct sched_semaphore *s, int cnt)
 {
-    SetEvent(eventid->event);
+    if (!cnt) return;
+    ReleaseSemaphore(s->sem, cnt, 0);
 }
 
 #else
@@ -520,13 +519,7 @@ sched_event_signal(struct sched_event *eventid)
 
 #define SCHED_THREAD_FUNC_DECL void*
 #define SCHED_THREAD_LOCAL __thread
-
 typedef pthread_t sched_thread;
-struct sched_event {
-    pthread_cond_t cond;
-    pthread_mutex_t mutex;
-};
-const sched_int SCHED_INFINITE = -1;
 
 SCHED_INTERN sched_int
 sched_thread_create(sched_thread *returnid, void*(*StartFunc)(void*), void *arg)
@@ -544,46 +537,6 @@ sched_thread_term(sched_thread threadid)
     return (pthread_cancel(threadid) == 0);
 }
 
-SCHED_INTERN struct sched_event
-sched_event_create(void)
-{
-    struct sched_event event = {PTHREAD_COND_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
-    return event;
-}
-
-SCHED_INTERN void
-sched_event_close(struct sched_event *eventid)
-{
-    /* do not need to close event */
-    SCHED_UNUSED(eventid);
-}
-
-SCHED_INTERN void
-sched_event_wait(struct sched_event *eventid, sched_int ms)
-{
-    SCHED_ASSERT(eventid);
-    pthread_mutex_lock(&eventid->mutex);
-    if (ms == SCHED_INFINITE) {
-        pthread_cond_wait(&eventid->cond, &eventid->mutex);
-    } else {
-        struct timespec waittime;
-        waittime.tv_sec = ms/1000;
-        ms -= (sched_int)waittime.tv_sec*1000;
-        waittime.tv_nsec = ms * 1000;
-        pthread_cond_timedwait(&eventid->cond, &eventid->mutex, &waittime);
-    }
-    pthread_mutex_unlock(&eventid->mutex);
-}
-
-SCHED_INTERN void
-sched_event_signal(struct sched_event *eventid)
-{
-    SCHED_ASSERT(eventid);
-    pthread_mutex_lock(&eventid->mutex);
-    pthread_cond_broadcast(&eventid->cond);
-    pthread_mutex_unlock(&eventid->mutex);
-}
-
 SCHED_INTERN sched_uint
 sched_num_hw_threads(void)
 {
@@ -595,6 +548,77 @@ sched_num_hw_threads(void)
     return (sched_uint)sysconf(_SC_NPROCESSORS_ONLN);
 #endif
 }
+
+#if defined(__MACH__)
+/* OS X does not have POSIX semaphores
+ * see: https://developer.apple.com/library/content/documentation/Darwin/Conceptual/KernelProgramming/synchronization/synchronization.html */
+#include <mach/mach.h>
+
+struct sched_semaphore {
+    semaphore_t sem;
+};
+
+SCHED_INTERN void
+sched_semaphore_create(struct sched_semaphore *s)
+{
+    semaphore_create(mach_task_self(), &s->sem, SYNC_POLICY_FIFO, 0);
+}
+
+SCHED_INTERN void
+sched_semaphore_close(struct sched_semaphore *s)
+{
+    semaphore_destroy(mach_task_self(), s->sem);
+}
+
+SCHED_INTERN void
+sched_semaphore_wait(struct sched_semaphore *s)
+{
+    semaphore_wait(s->sem);
+}
+
+SCHED_INTERN void
+sched_semaphore_signal(struct sched_semaphore *s, int cnt)
+{
+    while (cnt-- > 0)
+        semaphore_signal(s->sem);
+}
+
+#else /* POSIX */
+
+#include <semaphore.h>
+
+struct sched_semaphore {
+    sem_t sem;
+};
+
+SCHED_INTERN void
+sched_semaphore_create(struct sched_semaphore *s)
+{
+    int err = sem_init(&s->sem,0,0);
+    SCHED_ASSERT(err == 0);
+}
+
+SCHED_INTERN void
+sched_semaphore_close(struct sched_semaphore *s)
+{
+    sem_destroy(&s->sem);
+}
+
+SCHED_INTERN void
+sched_semaphore_wait(struct sched_semaphore *s)
+{
+    int err = sem_wait(&s->sem);
+    SCHED_ASSERT(err == 0);
+}
+
+SCHED_INTERN void
+sched_semaphore_signal(struct sched_semaphore *s, int cnt)
+{
+    while (cnt-- > 0)
+        sem_post(&s->sem);
+}
+
+#endif
 
 #endif
 
@@ -624,11 +648,6 @@ typedef int sched__check_pipe_size[(SCHED_PIPE_SIZE_LOG2 < 32) ? 1 : -1];
 #define SCHED_PIPE_INVALID    0xFFFFFFFF
 #define SCHED_PIPE_CAN_WRITE  0x00000000
 #define SCHED_PIPE_CAN_READ   0x11111111
-
-struct sched_task_partition {
-    sched_uint start;
-    sched_uint end;
-};
 
 struct sched_subset_task {
     struct sched_task *task;
@@ -782,17 +801,60 @@ sched_pipe_write(struct sched_pipe *pipe, const struct sched_subset_task *src)
 #ifndef SCHED_SPIN_COUNT_MAX
 #define SCHED_SPIN_COUNT_MAX 100
 #endif
+#ifndef SCHED_SPIN_BACKOFF_MUL
+#define SCHED_SPIN_BACKOFF_MUL 10
+#endif
+#ifndef SCHED_MAX_NUM_INITIAL_PARTITIONS
+#define SCHED_MAX_NUM_INITIAL_PARTITIONS 8
+#endif
 
 struct sched_thread_args {
     sched_uint thread_num;
     struct scheduler *scheduler;
 };
-
 SCHED_GLOBAL const sched_size sched_pipe_align = SCHED_ALIGNOF(struct sched_pipe);
 SCHED_GLOBAL const sched_size sched_arg_align = SCHED_ALIGNOF(struct sched_thread_args);
 SCHED_GLOBAL const sched_size sched_thread_align = SCHED_ALIGNOF(sched_thread);
-SCHED_GLOBAL const sched_size sched_event_align = SCHED_ALIGNOF(struct sched_event);
+SCHED_GLOBAL const sched_size sched_semaphore_align = SCHED_ALIGNOF(struct sched_semaphore);
 SCHED_GLOBAL SCHED_THREAD_LOCAL sched_uint gtl_thread_num = 0;
+
+SCHED_INTERN struct sched_subset_task
+sched_split_task(struct sched_subset_task *st, sched_uint range_to_split)
+{
+    struct sched_subset_task res = *st;
+    sched_uint range_left = st->partition.end - st->partition.start;
+    if (range_to_split > range_left)
+        range_to_split = range_left;
+    res.partition.end = st->partition.start + range_to_split;
+    st->partition.start = res.partition.end;
+    return res;
+}
+SCHED_INTERN void
+sched_wake_threads(struct scheduler *s)
+{
+    sched_semaphore_signal(s->new_task_semaphore, s->thread_waiting);
+}
+SCHED_INTERN void
+sched_split_add_task(struct scheduler *s, sched_uint thread_num,
+    struct sched_subset_task *st, sched_uint range_to_split, sched_int off)
+{
+    sched_int cnt = 0;
+    while (st->partition.start != st->partition.end) {
+        struct sched_subset_task t = sched_split_task(st, range_to_split);
+        ++cnt;
+        if (!sched_pipe_write(&s->pipes[gtl_thread_num], &t)) {
+            if (cnt > 1) sched_wake_threads(s);
+            if (t.task->range_to_run < range_to_split) {
+                t.partition.end = t.partition.start + t.task->range_to_run;
+                st->partition.start = t.partition.end;
+            }
+            t.task->exec(t.task->userdata, s, t.partition, thread_num);
+            --cnt;
+        }
+    }
+    sched_atomic_add(&st->task->run_count, cnt + off);
+    sched_wake_threads(s);
+}
 
 SCHED_INTERN sched_int
 sched_try_running_task(struct scheduler *s, sched_uint thread_num, sched_uint *pipe_hint)
@@ -809,16 +871,27 @@ sched_try_running_task(struct scheduler *s, sched_uint thread_num, sched_uint *p
             have_task = sched_pipe_read_back(&s->pipes[thread_to_check], &subtask);
         ++check_count;
     }
-
     if (have_task) {
+        sched_uint part_size = subtask.partition.end - subtask.partition.start;
         /* update hint, will preserve value unless actually got task from another thread */
         *pipe_hint = thread_to_check;
-        /* the task has already been divided up by scheduler_add, so just run */
-        subtask.task->exec(subtask.task->userdata, s, subtask.partition.start,
-                subtask.partition.end, thread_num);
-        sched_atomic_add(&subtask.task->run_count, -1);
-    }
-    return have_task;
+        if (subtask.task->range_to_run < part_size) {
+            struct sched_subset_task t = sched_split_task(&subtask, subtask.task->range_to_run);
+            sched_split_add_task(s, gtl_thread_num, &subtask, subtask.task->range_to_run, 0);
+            subtask.task->exec(t.task->userdata, s, t.partition, thread_num);
+            sched_atomic_add(&t.task->run_count, -1);
+        } else {
+            /* the task has already been divided up by scheduler_add, so just run */
+            subtask.task->exec(subtask.task->userdata, s, subtask.partition, thread_num);
+            sched_atomic_add(&subtask.task->run_count, -1);
+        }
+    } return have_task;
+}
+
+SCHED_INTERN void
+sched_call(sched_profiler_callback_f fn, void *usr, sched_uint threadid)
+{
+    if (fn) fn(usr, threadid);
 }
 
 SCHED_INTERN void
@@ -826,6 +899,7 @@ scheduler_wait_for_work(struct scheduler *s, sched_uint thread_num)
 {
     sched_uint i = 0;
     sched_int have_tasks = 0;
+    sched_atomic_add(&s->thread_waiting, 1);
     for (i = 0; i < s->threads_num; ++i) {
         if (!sched_pipe_is_empty(&s->pipes[i])) {
             have_tasks = 1;
@@ -833,14 +907,11 @@ scheduler_wait_for_work(struct scheduler *s, sched_uint thread_num)
         }
     }
     if (!have_tasks) {
-        if (s->profiling.wait_start)
-            s->profiling.wait_start(s->profiling.userdata, thread_num);
-        sched_atomic_add(&s->thread_active, -1);
-        sched_event_wait(s->event, SCHED_INFINITE);
-        sched_atomic_add(&s->thread_active, +1);
-        if (s->profiling.wait_stop)
-            s->profiling.wait_stop(s->profiling.userdata, thread_num);
+        sched_call(s->profiling.wait_start, s->profiling.userdata, thread_num);
+        sched_semaphore_wait(s->new_task_semaphore);
+        sched_call(s->profiling.wait_stop, s->profiling.userdata, thread_num);
     }
+    sched_atomic_add(&s->thread_waiting, -1);
 }
 
 SCHED_INTERN SCHED_THREAD_FUNC_DECL
@@ -852,22 +923,31 @@ sched_tasking_thread_f(void *pArgs)
     struct scheduler *s = args.scheduler;
     gtl_thread_num = args.thread_num;
 
-    sched_atomic_add(&s->thread_active, 1);
-    if (s->profiling.thread_start)
-        s->profiling.thread_start(s->profiling.userdata, thread_num);
-
+    sched_atomic_add(&s->thread_running, 1);
+    sched_call(s->profiling.thread_start, s->profiling.userdata, thread_num);
     hint_pipe = thread_num + 1;
     while (s->running) {
         if (!sched_try_running_task(s, thread_num, &hint_pipe)) {
             ++spin_count;
-            if (spin_count > SCHED_SPIN_COUNT_MAX)
+            if (spin_count > SCHED_SPIN_COUNT_MAX) {
                 scheduler_wait_for_work(s, thread_num);
+                spin_count = 0;
+            } else {
+                sched_uint backoff = spin_count * SCHED_SPIN_BACKOFF_MUL;
+                while (backoff) {
+                    --backoff;
+                    #if defined _WIN32 && defined _M_X86
+                    __mm_pause();
+                    #elif defined __i386__
+                    asm("pause");
+                    #else
+                    #endif
+                }
+            }
         } else spin_count = 0;
     }
-
     sched_atomic_add(&s->thread_running, -1);
-    if (s->profiling.thread_stop)
-        s->profiling.thread_stop(s->profiling.userdata, thread_num);
+    sched_call(s->profiling.thread_stop, s->profiling.userdata, thread_num);
     return 0;
 }
 
@@ -879,13 +959,21 @@ scheduler_init(struct scheduler *s, sched_size *memory,
     SCHED_ASSERT(memory);
 
     sched_zero_struct(*s);
-    /* ensure we have sufficent tasks to equally fill either all threads
-     * including the main or just the threads we launched, this is outside the
-     * first start as we awant to be able to runtime change it.*/
     s->threads_num = (thread_count == SCHED_DEFAULT)?
         sched_num_hw_threads() : (sched_uint)thread_count;
-    s->partitions_num = (s->threads_num == 1) ?
-        1: (s->threads_num * (s->threads_num - 1));
+
+    /* ensure we have sufficent tasks to equally fill either all threads including
+     * main or just the threads we've launched, this is outisde the first init
+     * as we want to be able to runtime change it */
+    if (s->threads_num > 1) {
+        s->partitions_num = s->threads_num * (s->threads_num-1);
+        s->partitions_init_num = s->threads_num-1;
+        if (s->partitions_init_num > SCHED_MAX_NUM_INITIAL_PARTITIONS)
+            s->partitions_init_num = SCHED_MAX_NUM_INITIAL_PARTITIONS;
+    } else {
+        s->partitions_num = 1;
+        s->partitions_init_num = 1;
+    }
     if (prof) s->profiling = *prof;
 
     /* calculate needed memory */
@@ -894,9 +982,9 @@ scheduler_init(struct scheduler *s, sched_size *memory,
     *memory += sizeof(struct sched_pipe) * s->threads_num;
     *memory += sizeof(struct sched_thread_args) * s->threads_num;
     *memory += sizeof(sched_thread) * s->threads_num;
-    *memory += sizeof(struct sched_event);
+    *memory += sizeof(struct sched_semaphore);
     *memory += sched_pipe_align + sched_arg_align;
-    *memory += sched_thread_align + sched_event_align;
+    *memory += sched_thread_align + sched_semaphore_align;
     s->memory = *memory;
 }
 
@@ -907,7 +995,7 @@ scheduler_start(struct scheduler *s, void *memory)
     SCHED_ASSERT(s);
     SCHED_ASSERT(memory);
     if (s->have_threads) return;
-    scheduler_stop(s);
+    scheduler_stop(s, 0);
 
     /* setup scheduler memory */
     sched_zero_size(memory, s->memory);
@@ -915,8 +1003,8 @@ scheduler_start(struct scheduler *s, void *memory)
     s->threads = SCHED_ALIGN_PTR(s->pipes + s->threads_num, sched_thread_align);
     s->args = (struct sched_thread_args*) SCHED_ALIGN_PTR(
         SCHED_PTR_ADD(void, s->threads, sizeof(sched_thread) * s->threads_num), sched_arg_align);
-    s->event = (struct sched_event*)SCHED_ALIGN_PTR(s->args + s->threads_num, sched_event_align);
-    *s->event = sched_event_create();
+    s->new_task_semaphore = (struct sched_semaphore*)SCHED_ALIGN_PTR(s->args + s->threads_num, sched_semaphore_align);
+    sched_semaphore_create(s->new_task_semaphore);
 
     /* Create one less thread than thread_num as the main thread counts as one */
     s->args[0].thread_num = 0;
@@ -925,7 +1013,7 @@ scheduler_start(struct scheduler *s, void *memory)
     ((sched_thread*)(s->threads)) [0] = 0;
 #endif
     s->thread_running = 1;
-    s->thread_active = 1;
+    s->thread_waiting = 0;
     s->running = 1;
 
     /* start hardware threads */
@@ -934,59 +1022,36 @@ scheduler_start(struct scheduler *s, void *memory)
         s->args[i].scheduler = s;
         sched_thread_create(&((sched_thread*)(s->threads))[i],
             sched_tasking_thread_f, &s->args[i]);
-        s->thread_running++;
-    }
-    s->have_threads = 1;
+    } s->have_threads = 1;
 }
 
 SCHED_API void
-scheduler_add(struct sched_task *task, struct scheduler *s,
-    sched_run func, void *pArg, sched_uint size)
+scheduler_add(struct scheduler *s, struct sched_task *task,
+    sched_run func, void *pArg, sched_uint size, sched_uint min_range)
 {
+    sched_uint range_to_split = 0;
     struct sched_subset_task subtask;
-    sched_uint range_to_run;
-    sched_uint range_left;
-    sched_uint num_added = 0;
-
     SCHED_ASSERT(s);
     SCHED_ASSERT(task);
     SCHED_ASSERT(func);
 
     task->userdata = pArg;
     task->exec = func;
-    task->size = size;
+    task->size = size > 0 ? size: 1;
+    task->run_count = -1;
+    task->min_range = min_range > 0 ? min_range: 1;
+    task->range_to_run = task->size / s->partitions_num;
+    if (task->range_to_run < task->min_range)
+        task->range_to_run = task->min_range;
+
+    range_to_split = task->size / s->partitions_init_num;
+    if (range_to_split < task->min_range)
+        range_to_split = task->min_range;
 
     subtask.task = task;
     subtask.partition.start = 0;
     subtask.partition.end = task->size;
-    task->run_count = -1;
-
-    /* divide task up and add to pipe */
-    range_to_run = SCHEDULER_MAX(1, task->size / s->partitions_num);
-    range_left = subtask.partition.end - subtask.partition.start;
-    num_added = 0;
-    while (range_left) {
-        if (range_to_run > range_left)
-            range_to_run = range_left;
-
-        subtask.partition.start = task->size - range_left;
-        subtask.partition.end = subtask.partition.start + range_to_run;
-        range_left -= range_to_run;
-
-        /* add partition to pipe */
-        ++num_added;
-        if (!sched_pipe_write(&s->pipes[gtl_thread_num], &subtask)) {
-            /* pipe is full therefore directly call it */
-            subtask.task->exec(subtask.task->userdata, s, subtask.partition.start,
-                subtask.partition.end, gtl_thread_num);
-            --num_added;
-        }
-    }
-
-    /* increment running count by number added plus one to account for start value */
-    sched_atomic_add(&task->run_count, (sched_int)(num_added+1));
-    if (s->thread_active < s->thread_running)
-        sched_event_signal(s->event);
+    sched_split_add_task(s, gtl_thread_num, &subtask, range_to_split, 1);
 }
 
 SCHED_API void
@@ -997,9 +1062,7 @@ scheduler_join(struct scheduler *s, struct sched_task *task)
     if (task) {
         while (task->run_count)
             sched_try_running_task(s, gtl_thread_num, &pipe_to_check);
-    } else {
-        sched_try_running_task(s, gtl_thread_num, &pipe_to_check);
-    }
+    } else sched_try_running_task(s, gtl_thread_num, &pipe_to_check);
 }
 
 SCHED_API void
@@ -1007,9 +1070,7 @@ scheduler_wait(struct scheduler *s)
 {
     sched_int have_task = 1;
     sched_uint pipe_hint = gtl_thread_num+1;
-    SCHED_ASSERT(s);
-
-    while (have_task || s->thread_active > 1) {
+    while (have_task || s->thread_waiting < (s->thread_running-1)) {
         sched_uint i = 0;
         sched_try_running_task(s, gtl_thread_num, &pipe_hint);
         have_task = 0;
@@ -1023,7 +1084,7 @@ scheduler_wait(struct scheduler *s)
 }
 
 SCHED_API void
-scheduler_stop(struct scheduler *s)
+scheduler_stop(struct scheduler *s, int doWait)
 {
     sched_uint i = 0;
     SCHED_ASSERT(s);
@@ -1033,20 +1094,21 @@ scheduler_stop(struct scheduler *s)
     /* wait for threads to quit and terminate them */
     s->running = 0;
     scheduler_wait(s);
-    while (s->thread_running > 1) {
-        /* keep firing event to ensure all threads pick uo state of running*/
-        sched_event_signal(s->event);
+    while (doWait && s->thread_running > 1) {
+        /* keep firing event to ensure all threads pick up state of running*/
+        sched_semaphore_signal(s->new_task_semaphore, s->thread_running);
     }
     for (i = 1; i < s->threads_num; ++i)
         sched_thread_term(((sched_thread*)(s->threads))[i]);
 
-    sched_event_close(s->event);
+    sched_semaphore_close(s->new_task_semaphore);
+    s->new_task_semaphore = 0;
     s->thread_running = 0;
-    s->thread_active = 0;
+    s->thread_waiting = 0;
     s->have_threads = 0;
     s->threads = 0;
     s->pipes = 0;
-    s->event = 0;
+    s->new_task_semaphore = 0;
     s->args = 0;
 }
 

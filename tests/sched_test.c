@@ -18,6 +18,7 @@
     3.  This notice may not be removed or altered from any source distribution.
 */
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -27,85 +28,120 @@
 #define SCHED_IMPLEMENTATION
 #define SCHED_USE_FIXED_TYPES
 #define SCHED_USE_ASSERT
-#include "../mm_sched.h"
+#include "../sched.h"
 
-struct parallel_sum_args {
-    unsigned long *partial_sums;
-    unsigned long parital_sum_num;
+/* ---------------------------------------------------------------
+ *                          PARALLEL SUM TASK
+ * ---------------------------------------------------------------*/
+struct count {
+    uint64_t cnt;
+    char cacheline[64];
 };
-
-static struct parallel_sum_args
-parallel_sum_arg(unsigned long partial_sums)
-{
-    struct parallel_sum_args args;
-    args.parital_sum_num = partial_sums;
-    args.partial_sums = (unsigned long*)calloc(sizeof(unsigned long), args.parital_sum_num);
-    assert(args.partial_sums);
-    return args;
-}
-
+struct parallel_sum_task {
+    struct sched_task task;
+    struct scheduler *sched;
+    struct count *partsums;
+    sched_uint size, cnt;
+};
 static void
-parallel_sum(void *pArgs, struct scheduler *ts, sched_uint start, sched_uint end, sched_uint thread_num)
+parallel_sum_task_init(struct parallel_sum_task *pst, struct scheduler *sched, sched_uint size)
 {
-    unsigned long sum = 0, i = 0;
-    struct parallel_sum_args args;
-    UNUSED(ts);
-    args = *(struct parallel_sum_args*)pArgs;
-    sum = args.partial_sums[thread_num];
-    for (i = start; i < end; ++i)
+    memset(pst, 0, sizeof(*pst));
+    pst->size = size;
+    pst->sched = sched;
+    pst->cnt = sched->threads_num;
+    pst->partsums = calloc(pst->cnt, sizeof(struct count));
+    memset(pst->partsums, 0, sizeof(struct count) * pst->cnt);
+}
+static void
+parallel_sum_task_destroy(struct parallel_sum_task *pst)
+{
+    free(pst->partsums);
+}
+static void
+parallel_sum_task_run(void *p, struct scheduler *s,
+    struct sched_task_partition range, sched_uint thread_num)
+{
+    uint64_t i = 0;
+    struct parallel_sum_task *t = (struct parallel_sum_task*)p;
+    uint64_t sum = t->partsums[thread_num].cnt;
+    for (i = range.start; i < range.end; ++i)
         sum += i + 1;
-    args.partial_sums[thread_num] = sum;
+    t->partsums[thread_num].cnt = sum;
 }
-
+/* ---------------------------------------------------------------
+ *                      PARALLEL REDUCTION TASK
+ * ---------------------------------------------------------------*/
+struct parallel_sum_reduction_task {
+    struct sched_task task;
+    struct parallel_sum_task pst;
+    uint64_t sum;
+};
 static void
-parallel_reduction_sum(void *pArgs, struct scheduler *ts,
-    sched_uint start, sched_uint end, sched_uint thread_num)
+parallel_sum_reduction_task_init(struct parallel_sum_reduction_task *prt,
+    struct scheduler *sched, sched_uint size)
 {
-    unsigned long sum = 0, in_max_sum, i = 0;
-    struct parallel_sum_args args = parallel_sum_arg(ts->partitions_num);
-    UNUSED(start); UNUSED(end); UNUSED(thread_num);
-    in_max_sum = *(unsigned long*)pArgs;
-    {
-        struct sched_task task;
-        scheduler_add(&task, ts, parallel_sum, &args, (unsigned int)in_max_sum);
-        scheduler_join(ts, &task);
-    }
-    for (i = 0; i < args.parital_sum_num; ++i)
-        sum += args.partial_sums[i];
-    free(args.partial_sums);
-    *(unsigned long*)pArgs = sum;
+    memset(prt, 0, sizeof(*prt));
+    parallel_sum_task_init(&prt->pst, sched, size);
+    prt->sum = 0;
+}
+static void
+parallel_sum_reduction_task_destroy(struct parallel_sum_reduction_task *ptr)
+{
+    parallel_sum_task_destroy(&ptr->pst);
+}
+static void
+parallel_sum_reduction_task_run(void *p, struct scheduler *s,
+    struct sched_task_partition range, sched_uint thread_num)
+{
+    sched_uint i;
+    struct parallel_sum_reduction_task *t = (struct parallel_sum_reduction_task*)p;
+    scheduler_add(s, &t->pst.task, parallel_sum_task_run, &t->pst, t->pst.size, 0);
+    scheduler_join(s, &t->pst.task);
+    for (i = 0; i < t->pst.cnt; ++i)
+        t->sum += t->pst.partsums[i].cnt;
 }
 
-int
-main(void)
+/* ---------------------------------------------------------------
+ *                              TEST
+ * ---------------------------------------------------------------*/
+#define WARMUP 10
+#define RUNS 10
+#define REPEATS (WARMUP+RUNS)
+
+int main(void)
 {
-    void *memory;
-    size_t needed_memory;
+    sched_uint i, nthrds = sched_num_hw_threads();
+    for (i = 1; i <= nthrds; ++i) {
+        void *memory = 0;
+        size_t needed_memory = 0;
 
-    struct scheduler ts;
-    scheduler_init(&ts, &needed_memory, SCHED_DEFAULT, NULL);
-    memory = calloc(needed_memory, 1);
-    assert(memory);
-    scheduler_start(&ts, memory);
-    {
-        unsigned long serial_sum = 0;
-        unsigned long max = 10 * 1024 * 1024;
-        unsigned long in_max_sum = max;
-
-        struct sched_task task;
-        scheduler_add(&task, &ts, parallel_reduction_sum, &in_max_sum, 1);
-        scheduler_join(&ts, &task);
-
-        fprintf(stdout, "Parallel complete sum:\t%lu\n", in_max_sum);
+        struct scheduler ts;
+        scheduler_init(&ts, &needed_memory, SCHED_DEFAULT, 0);
+        memory = calloc(needed_memory, 1);
+        scheduler_start(&ts, memory);
         {
-            unsigned long i = 0;
-            for (i = 0; i < max; ++i)
-                serial_sum += i + 1;
-        }
-        fprintf(stdout, "Serial Example complete sum:\t%lu\n", serial_sum);
-    }
-    scheduler_stop(&ts);
-    free(memory);
-    return 0;
-}
+            int run = 0;
+            for (run = 0; run < REPEATS; ++run) {
+                struct parallel_sum_reduction_task psrt;
+                fprintf(stderr, "Run: %d ...\n", run);
+                parallel_sum_reduction_task_init(&psrt, &ts, 10*1024*1024);
+                scheduler_add(&ts, &psrt.task, parallel_sum_reduction_task_run, &psrt, 0, 0);
+                scheduler_join(&ts, &psrt.task);
 
+                {uint64_t n, sum = 0;
+                for (n = 0; n < psrt.pst.size; ++n) {
+                    sum += n + 1;
+                }
+                if (sum != psrt.sum) {
+                    fprintf(stderr, "ERROR; sum does not match!\n");
+                    return -1;
+                }
+                fprintf(stderr, "\tSuccess: %lu\n", sum);}
+                parallel_sum_reduction_task_destroy(&psrt);
+            }
+        }
+        scheduler_stop(&ts, 1);
+        free(memory);
+    } return 0;
+}
