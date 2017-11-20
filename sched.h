@@ -914,6 +914,17 @@ scheduler_wait_for_work(struct scheduler *s, sched_uint thread_num)
     sched_atomic_add(&s->thread_waiting, -1);
 }
 
+#if defined _WIN32
+  #if defined _M_IX86 || defined _M_X64
+    #pragma intrinsic(_mm_pause)
+    SCHED_INTERN void sched_pause(void) {_mm_pause();}
+  #endif
+#elif defined __i386__ || defined __x86_64__
+    SCHED_INTERN void sched_pause(void) {__asm__ __volatile__("pause;");}
+#else
+    SCHED_INTERN void sched_pause(void) {;} /* may have NOP or yield euiv */
+#endif
+
 SCHED_INTERN SCHED_THREAD_FUNC_DECL
 sched_tasking_thread_f(void *pArgs)
 {
@@ -935,13 +946,8 @@ sched_tasking_thread_f(void *pArgs)
             } else {
                 sched_uint backoff = spin_count * SCHED_SPIN_BACKOFF_MUL;
                 while (backoff) {
+                    sched_pause();
                     --backoff;
-                    #if defined _WIN32 && defined _M_X86
-                    __mm_pause();
-                    #elif defined __i386__
-                    asm("pause");
-                    #else
-                    #endif
                 }
             }
         } else spin_count = 0;
