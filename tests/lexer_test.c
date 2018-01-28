@@ -1,7 +1,7 @@
 #define LEXER_USE_FIXED_TYPES
 #define LEXER_USE_ASSERT
 #define LEXER_IMPLEMENTATION
-#include "../mm_lexer.h"
+#include "../lexer.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -190,7 +190,24 @@ int main(void)
         test_assert(lexer_read(&lexer, &tok));
         test_token(&tok, "register", LEXER_TOKEN_NAME, 0);
     }
-
+    test_section("comment_c")
+    {
+        const char text[] = "  \t/*THIS IS A COMMENT */ register";
+        struct lexer_token tok;
+        struct lexer lexer;
+        lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "register", LEXER_TOKEN_NAME, 0);
+    }
+    test_section("comment_cpp")
+    {
+        const char text[] = "  \t//THIS IS A COMMENT\n register";
+        struct lexer_token tok;
+        struct lexer lexer;
+        lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "register", LEXER_TOKEN_NAME, 0);
+    }
     test_section("code_decl")
     {
         const char text[] = "\t\nconst char\t*text = \"test\";\n";
@@ -255,6 +272,34 @@ int main(void)
         test_token(&tok, ";", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_SEMICOLON);
         test_assert(lexer_read(&lexer, &tok));
         test_token(&tok, "}", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_BRACE_CLOSE);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, ";", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_SEMICOLON);
+    }
+    test_section("operator/")
+    {
+        const char text[] = "inline Vector2 operator/(float scalar) const;";
+        struct lexer_token tok;
+        struct lexer lexer;
+        lexer_init(&lexer, text, sizeof(text), NULL, test_log, NULL);
+
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "inline", LEXER_TOKEN_NAME, 0);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "Vector2", LEXER_TOKEN_NAME, 0);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "operator", LEXER_TOKEN_NAME, 0);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "/", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_DIV);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "(", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_PARENTHESE_OPEN);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "float", LEXER_TOKEN_NAME, 0);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "scalar", LEXER_TOKEN_NAME, 0);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, ")", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_PARENTHESE_CLOSE);
+        test_assert(lexer_read(&lexer, &tok));
+        test_token(&tok, "const", LEXER_TOKEN_NAME, 0);
         test_assert(lexer_read(&lexer, &tok));
         test_token(&tok, ";", LEXER_TOKEN_PUNCTUATION, LEXER_PUNCT_SEMICOLON);
     }

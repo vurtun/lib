@@ -1312,15 +1312,14 @@ lexer_read(struct lexer *lexer, struct lexer_token *token)
     } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
         if (!lexer_read_name(lexer, token))
             return 0;
-    } else if ((c == '/' || c == '\\') || c == '.') {
+    } else if (((c == '/' && (*(lexer->current + 1)) == '*')|| c == '\\') || c == '.') {
         if (!lexer_read_name(lexer, token))
             return 0;
     } else if (!lexer_read_punctuation(lexer, token)) {
         if (lexer->log) {
             lexer->log(lexer->userdata, LEXER_ERROR, lexer->line,
                 "unkown punctuation: %c", c);
-        }
-        lexer->error = 1;
+        } lexer->error = 1;
         return 0;
     }
     return 1;
