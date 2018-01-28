@@ -667,22 +667,20 @@ json_ipow(int base, unsigned exp)
 }
 /* converts a token containing a integer value into a number */
 JSON_INTERN json_number
-json_stoi(struct json_token *tok)
+json_stoi(int *neg, struct json_token *tok)
 {
     json_number n = 0;
     int i = 0;
     int off;
-    int neg;
     if (!tok->str || !tok->len)
         return 0;
 
     off = (tok->str[0] == '-' || tok->str[0] == '+') ? 1 : 0;
-    neg = (tok->str[0] == '-') ? 1 : 0;
+    *neg = (tok->str[0] == '-') ? 1 : 0;
     for (i = off; i < tok->len; i++) {
         if ((tok->str[i] >= '0') && (tok->str[i] <= '9'))
             n = (n * 10) + tok->str[i]  - '0';
-    }
-    return (neg) ? -n : n;
+    } return (*neg) ? -n : n;
 }
 /* converts a token containing a real value into a floating point number */
 JSON_INTERN json_number
@@ -721,7 +719,7 @@ json_lcmp(const struct json_token* tok, const char* str, int len)
 JSON_API int
 json_convert(json_number *num, const struct json_token *tok)
 {
-    int len;
+    int ineg, eneg, len;
     const char *cur;
     json_number i, f, e, p;
     enum {INT, FLT, EXP, TOKS};
@@ -759,12 +757,12 @@ json_convert(json_number *num, const struct json_token *tok)
         }
     } write->len = (int)(cur - write->str);
 
-    i = json_stoi(&nums[INT]);
+    i = json_stoi(&ineg, &nums[INT]);
     f = json_stof(&nums[FLT]);
-    e = json_stoi(&nums[EXP]);
-    p = json_ipow(10, (unsigned)((e < 0) ? -e : e));
-    if (e < 0) p = (1 / p);
-    *num = (i + ((i < 0) ? -f : f)) * p;
+    e = json_stoi(&eneg, &nums[EXP]);
+    p = json_ipow(10, (unsigned)(eneg ? -e : e));
+    if (eneg) p = (1 / p);
+    *num = (i + (ineg ? -f : f)) * p;
     return JSON_NUMBER;
 }
 JSON_API int
