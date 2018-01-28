@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define test_section(desc) \
     do { \
@@ -904,6 +905,21 @@ static int run_test(void)
         test_assert(json_query_type(toks, read, "b.d") == JSON_TRUE);
         test_assert(json_query_type(toks, read, "b.e") == JSON_FALSE);
         test_assert(json_query_type(toks, read, "b.f") == JSON_NULL);
+    }
+    test_section("test_case")
+    {
+        int read = 0;
+        json_number val;
+        enum json_status status;
+        struct json_token toks[128];
+
+        const char buf[] = "{\"value\": [0.500000, -0.012345, 1.0000]}";
+        memset(toks, 0,  sizeof(toks));
+        status = json_load(toks, 128, &read, buf, sizeof(buf));
+        test_assert(status == JSON_OK);
+        test_assert(json_query_type(toks, read, "value[1]") == JSON_NUMBER);
+        json_query_number(&val, toks, read, "value[1]");
+        test_assert(fabs(val - (-0.012345)) < 0.00000001);
     }
     test_result();
     return fail_count;
