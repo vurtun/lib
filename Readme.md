@@ -1,5 +1,4 @@
-mmx
-===
+# mmx
 
 My single header libraries for C/C++.
 
@@ -14,8 +13,8 @@ My single header libraries for C/C++.
 Total libraries: 5  
 Total lines of C code: 5608
 
-##FAQ
----
+## FAQ
+
 #### Why single-file headers?
 Windows doesn't have standard directories where libraries
 live. That makes deploying libraries in Windows a lot more
@@ -54,7 +53,7 @@ on C.
 I use C89 instead of C99/C11 for its portability between different compilers
 and accessiblity for other languages.
 
-##References
+## References
 - [Sean Barretts single header libraries](https://github.com/nothings/stb)
 - [Other single header libraries](https://github.com/nothings/stb/blob/master/docs/other_libs.md)
 - [enkiTS: source implementation for mm_sched.h](https://github.com/dougbinks/enkiTS)
