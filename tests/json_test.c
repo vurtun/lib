@@ -241,11 +241,13 @@ static int run_test(void)
         struct json_token tok;
         struct json_iter iter;
         struct json_pair pair;
+        const char *toks[] = {0, "1.0", "2.0", "3.0", "4.0"};
 
-        const char buf[] = "[1.0, 2.0, 3.0, 4.0]";
+        const char buf[] = "[1.0, 2.0, 3.0, 4.0 ]";
         iter = json_begin(buf, sizeof(buf));
         iter = json_read(&tok, &iter);
         while (iter.src) {
+            test_assert(!json_cmp(&tok, toks[i]));
             test_assert(json_convert(&num, &tok) == JSON_NUMBER);
             test_assert((json_number)i == num);
             iter = json_read(&tok, &iter);

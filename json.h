@@ -103,9 +103,9 @@ extern "C" {
 typedef double json_number;
 enum json_token_type {
     JSON_NONE,      /* invalid token */
-    JSON_OBJECT,    /* subobject */
-    JSON_ARRAY,     /* subarray */
-    JSON_NUMBER,    /* float point number token */
+    JSON_OBJECT,    /* sub-object */
+    JSON_ARRAY,     /* sub-array */
+    JSON_NUMBER,    /* floating point number token */
     JSON_STRING,    /* string text token */
     JSON_TRUE,      /* true constant token */
     JSON_FALSE,     /* false constant token*/
@@ -150,7 +150,6 @@ struct json_iter {
     const char *go;
     const char *src;
 };
-
 /* tokenizer */
 JSON_API struct json_iter   json_begin(const char *json, int length);
 JSON_API struct json_iter   json_read(struct json_token*, const struct json_iter*);
@@ -247,7 +246,7 @@ static char json_go_struct[256] = {
     JSON_STATE_BARE,    JSON_STATE_BARE,    JSON_STATE_BARE,    JSON_STATE_BARE,
     JSON_STATE_BARE,    JSON_STATE_BARE,    JSON_STATE_BARE,    JSON_STATE_BARE,
     JSON_STATE_BARE,    JSON_STATE_BARE,    JSON_STATE_SEP, JSON_STATE_FAILED,
-    JSON_STATE_FAILED,  JSON_STATE_SEP,     JSON_STATE_FAILED,  JSON_STATE_FAILED,
+    JSON_STATE_FAILED,  JSON_STATE_SEP, JSON_STATE_FAILED,  JSON_STATE_FAILED,
     JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,
     JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,
     JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,
@@ -305,7 +304,7 @@ static char json_go_bare[256] = {
     JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,
     JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,
     JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,  JSON_STATE_FAILED,
-    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
+    JSON_STATE_UNBARE,  JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_UNBARE,  JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
@@ -385,7 +384,7 @@ static char json_go_string[256] = {
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
-    JSON_STATE_ESC,     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
+    JSON_STATE_ESC, JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
     JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,    JSON_STATE_LOOP,
@@ -644,31 +643,29 @@ json_type(const struct json_token *tok)
         return JSON_NULL;
     return JSON_NUMBER;
 }
-/* dequotes a string token */
 JSON_INTERN void
 json_deq(struct json_token *tok)
 {
-    if (tok->str[0] == '\"' && tok->len >= 2) {
+    /* dequotes a string token */
+    if (tok->str[0] == '\"' && tok->len >= 2)
         tok->str++; tok->len-=2;
-    }
 }
-/* simple power function for json exponent numbers */
 JSON_INTERN json_number
 json_ipow(int base, unsigned exp)
 {
+    /* simple power function for json exponent numbers */
     long res = 1;
     while (exp) {
         if (exp & 1)
             res *= base;
         exp >>= 1;
         base *= base;
-    }
-    return (json_number)res;
+    } return (json_number)res;
 }
-/* converts a token containing a integer value into a number */
 JSON_INTERN json_number
 json_stoi(int *neg, struct json_token *tok)
 {
+    /* converts a token containing a integer value into a number */
     json_number n = 0;
     int i = 0;
     int off;
@@ -682,10 +679,10 @@ json_stoi(int *neg, struct json_token *tok)
             n = (n * 10) + tok->str[i]  - '0';
     } return (*neg) ? -n : n;
 }
-/* converts a token containing a real value into a floating point number */
 JSON_INTERN json_number
 json_stof(struct json_token *tok)
 {
+    /* converts a token containing a real value into a floating point number */
     int i = 0;
     json_number n = 0;
     json_number f = 0.1;
@@ -695,13 +692,12 @@ json_stof(struct json_token *tok)
             n = n + (tok->str[i] - '0') * f;
             f *= 0.1;
         }
-    }
-    return n;
+    } return n;
 }
-/* compares a size limited string with a string inside a token */
 JSON_INTERN int
 json_lcmp(const struct json_token* tok, const char* str, int len)
 {
+    /* compares a size limited string with a string inside a token */
     int i;
     JSON_ASSERT(tok);
     JSON_ASSERT(str);
@@ -710,8 +706,7 @@ json_lcmp(const struct json_token* tok, const char* str, int len)
     for (i = 0; (i < tok->len && i < len); i++, str++){
         if (tok->str[i] != *str)
             return 1;
-    }
-    return 0;
+    } return 0;
 }
 /*--------------------------------------------------------------------------
                                 UTILITY
@@ -794,9 +789,7 @@ json_cmp(const struct json_token* tok, const char* str)
     for (i = 0; (i < tok->len); i++, str++){
         if (tok->str[i] != *str)
             return 1;
-    }
-    //Check we have exhausted str
-    return *str == '\0' ? 0 : 1;
+    } return *str == '\0' ? 0 : 1;
 }
 /*--------------------------------------------------------------------------
                                 TOKENIZER
@@ -983,8 +976,7 @@ json_num(const char *json, int length)
     while (!iter.err && iter.src && tok.str) {
         count += (1 + tok.sub);
         iter = json_read(&tok, &iter);
-    }
-    return count;
+    } return count;
 }
 JSON_API enum json_status
 json_load(struct json_token *toks, int max, int *read,
@@ -1019,12 +1011,10 @@ json_load(struct json_token *toks, int max, int *read,
             status = json_load(toks, max, read, toks[*read-1].str, toks[*read-1].len);
             if (status != JSON_OK) return status;
         }
-
         iter = json_read(&tok, &iter);
         if (iter.err && iter.src && iter.len)
             return JSON_PARSING_ERROR;
-    }
-    return status;
+    } return status;
 }
 /*--------------------------------------------------------------------------
                                 QUERY
@@ -1068,13 +1058,11 @@ json_path_parse_name(struct json_token *tok, const char *path,
             return(end + 2);
         else return(end + 1);
     }
-
     /* only array after name */
     if (begin < del) {
         tok->len = (int)(begin - tok->str);
         return begin;
     }
-
     if (!del) return NULL;
     if (*del == '\0') {
         tok->len = (int)(del - tok->str);
@@ -1170,40 +1158,38 @@ json_query(struct json_token *toks, int count, const char *path)
             }
             continue;
         }
-        {
-            /* check if current table element is equal to the current path  */
-            if (!json_lcmp(iter, name.str, name.len)) {
-                /* correct token found and end of path */
-                if (!path) {
-                    if ((i + 1) > count)
-                        return NULL;
-                    return (iter + 1);
-                }
-                /* check if path points to invalid token */
-                if ((i+1) > count)
+        /* check if current table element is equal to the current path  */
+        if (!json_lcmp(iter, name.str, name.len)) {
+            /* correct token found and end of path */
+            if (!path) {
+                if ((i + 1) > count)
                     return NULL;
-                if(toks[i+1].type != JSON_OBJECT && toks[i+1].type != JSON_ARRAY)
-                    return NULL;
-
-                /* look deeper into child object/array */
-                iter = &toks[++i];
-                path = json_path_parse_name(&name, path, JSON_DELIMITER);
-            } else {
-                /* key is not correct iterate until end of object */
-                if (++obj.index >= obj.size)
-                    return NULL;
-                if ((i + 1) >= count)
-                    return NULL;
-                if (iter[1].type == JSON_ARRAY || iter[1].type == JSON_OBJECT) {
-                    i = i + (iter[1].sub + 2);
-                } else i = i + 2;
-                if (i >= count)
-                    return NULL;
-                iter = &toks[i];
+                return (iter + 1);
             }
+            /* check if path points to invalid token */
+            if ((i+1) > count)
+                return NULL;
+            if(toks[i+1].type != JSON_OBJECT && toks[i+1].type != JSON_ARRAY)
+                return NULL;
+
+            /* look deeper into child object/array */
+            iter = &toks[++i];
+            path = json_path_parse_name(&name, path, JSON_DELIMITER);
+        } else {
+            /* key is not correct iterate until end of object */
+            if (++obj.index >= obj.size)
+                return NULL;
+            if ((i + 1) >= count)
+                return NULL;
+            if (iter[1].type == JSON_ARRAY || iter[1].type == JSON_OBJECT) {
+                i = i + (iter[1].sub + 2);
+            } else i = i + 2;
+
+            if (i >= count)
+                return NULL;
+            iter = &toks[i];
         }
-    }
-    return iter;
+    } return iter;
 }
 JSON_API int
 json_query_number(json_number *num, struct json_token *toks, int count,
@@ -1222,7 +1208,6 @@ json_query_number(json_number *num, struct json_token *toks, int count,
     if (tok->type != JSON_NUMBER)
         return tok->type;
     return json_convert(num, tok);
-
 }
 JSON_API int
 json_query_string(char *buffer, int max, int *size,
@@ -1243,7 +1228,6 @@ json_query_string(char *buffer, int max, int *size,
         return tok->type;
     *size = json_cpy(buffer, max, tok);
     return tok->type;
-
 }
 JSON_API int
 json_query_type(struct json_token *toks, int count, const char *path)

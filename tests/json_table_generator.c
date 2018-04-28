@@ -66,6 +66,7 @@ void fill(void)
     json_go_bare[','] = JSON_STATE_UNBARE;
     json_go_bare[']'] = JSON_STATE_UNBARE;
     json_go_bare['}'] = JSON_STATE_UNBARE;
+    json_go_bare[' '] = JSON_STATE_UNBARE;
 
     for (i = 32; i <= 126; ++i)
         json_go_string[i] = JSON_STATE_LOOP;
