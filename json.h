@@ -49,18 +49,17 @@ EXAMPLES:*/
     size_t len = strlen(json);
 
     /* load content into token array */
-    size_t read = 0;
-    size_t num = json_num(json, len);
-    struct json_token *toks = calloc(num, sizeof(struct json_token));
-    json_load(toks, num, &read, json, len);
+    struct json_parser p = {0};
+    while (json_load(&p, json, len))
+        p.toks = realloc(p.toks, (size_t)p.cap * sizeof(struct json_token));
 
     /* query token */
-    struct json_token *t0 = json_query(toks, num, "map.entity[4].position");
+    struct json_token *t0 = json_query(toks, p.cnt, "map.entity[4].position");
 
     /* query string */
     size_t size;
     char buffer[64];
-    json_query_string(buffer, 64, &size, toks, num, "map.entity[4].name");
+    json_query_string(buffer, 64, &size, toks, p.cnt, "map.entity[4].name");
 
     /* query number */
     json_number num;
@@ -173,6 +172,13 @@ struct json_parser {
 JSON_API int                json_num(const char *json, int length);
 JSON_API int                json_load(struct json_parser *p, const char *str, int len);
 
+/* iterate over array/object content */
+JSON_API struct json_token* json_array_begin(struct json_token *tok);
+JSON_API struct json_token* json_array_next(struct json_token *tok);
+
+JSON_API struct json_token* json_obj_begin(struct json_token *tok);
+JSON_API struct json_token* json_obj_next(struct json_token *toks);
+
 /* access nodes inside token array */
 JSON_API struct json_token *json_query(struct json_token *toks, int count, const char *path);
 JSON_API int                json_query_number(json_number*, struct json_token *toks, int count, const char *path);
@@ -243,7 +249,7 @@ enum json_nuber_states {
     JSON_STATE_NUM_MAX
 };
 JSON_GLOBAL const struct json_iter JSON_ITER_NULL = {0,0,0,0,0};
-JSON_GLOBAL const struct json_token JSON_TOKEN_NULL = {JSON_NONE,0,0,0,0};
+JSON_GLOBAL const struct json_token JSON_TOKEN_NULL = {0,JSON_NONE,0,0,0};
 
 /*--------------------------------------------------------------------------
                                 TABLES
