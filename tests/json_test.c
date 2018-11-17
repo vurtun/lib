@@ -568,127 +568,157 @@ static int run_test(void)
         test_assert(json_num(buf4, sizeof(buf4)) == 8);
     }
 
+    test_section("parse")
+    {
+        /* Beware parser take about sizeof(struct json_iter) * JSON_MAX_DEPTH bytes of memory */
+        const char buf[] = "{\"sub\":{\"a\": \"b\"}, \"list\":[1,2,3,4], \"a\":true, \"b\": \"0a1b2\"}";
+        struct json_parser p = {0};
+        while (json_load(&p, buf, sizeof(buf)))
+            p.toks = realloc(p.toks, (size_t)p.cap * sizeof(struct json_token));
+
+        test_assert(p.err == JSON_OK);
+        test_token(&p.toks[0], "sub", JSON_STRING, 0, 0);
+        test_token(&p.toks[1], "{\"a\": \"b\"}", JSON_OBJECT, 1, 2);
+        test_token(&p.toks[2], "a", JSON_STRING, 0, 0);
+        test_token(&p.toks[3], "b", JSON_STRING, 0, 0);
+        test_token(&p.toks[4], "list", JSON_STRING, 0, 0);
+        test_token(&p.toks[5], "[1,2,3,4]", JSON_ARRAY, 4, 4);
+        test_token(&p.toks[6], "1", JSON_NUMBER, 0, 0);
+        test_token(&p.toks[7], "2", JSON_NUMBER, 0, 0);
+        test_token(&p.toks[8], "3", JSON_NUMBER, 0, 0);
+        test_token(&p.toks[9], "4", JSON_NUMBER, 0, 0);
+        test_token(&p.toks[10], "a", JSON_STRING, 0, 0);
+        test_token(&p.toks[11], "true", JSON_TRUE, 0, 0);
+        test_token(&p.toks[12], "b", JSON_STRING, 0, 0);
+        test_token(&p.toks[13], "0a1b2", JSON_STRING, 0, 0);
+        test_assert(p.cnt == 14);
+        free(p.toks);
+    }
+
     test_section("load")
     {
         int count = 0;
-        int read = 0;
-        enum json_status status;
-        struct json_token toks[14];
+        struct json_token toks[14] = {{0}};
         const char buf[] =
             "{\"sub\":{\"a\": \"b\"}, \"list\":[1,2,3,4], \"a\":true, \"b\": \"0a1b2\"}";
 
-        memset(toks, 0,  sizeof(toks));
         count = json_num(buf, sizeof(buf));
-        test_assert(count == 14);
-        status = json_load(toks, count, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_token(&toks[0], "sub", JSON_STRING, 0, 0);
-        test_token(&toks[1], "{\"a\": \"b\"}", JSON_OBJECT, 1, 2);
-        test_token(&toks[2], "a", JSON_STRING, 0, 0);
-        test_token(&toks[3], "b", JSON_STRING, 0, 0);
-        test_token(&toks[4], "list", JSON_STRING, 0, 0);
-        test_token(&toks[5], "[1,2,3,4]", JSON_ARRAY, 4, 4);
-        test_token(&toks[6], "1", JSON_NUMBER, 0, 0);
-        test_token(&toks[7], "2", JSON_NUMBER, 0, 0);
-        test_token(&toks[8], "3", JSON_NUMBER, 0, 0);
-        test_token(&toks[9], "4", JSON_NUMBER, 0, 0);
-        test_token(&toks[10], "a", JSON_STRING, 0, 0);
-        test_token(&toks[11], "true", JSON_TRUE, 0, 0);
-        test_token(&toks[12], "b", JSON_STRING, 0, 0);
-        test_token(&toks[13], "0a1b2", JSON_STRING, 0, 0);
-        test_assert(read == 14);
+        test_assert(count <= 14);
+
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 14;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_token(&toks[0], "sub", JSON_STRING, 0, 0);
+            test_token(&toks[1], "{\"a\": \"b\"}", JSON_OBJECT, 1, 2);
+            test_token(&toks[2], "a", JSON_STRING, 0, 0);
+            test_token(&toks[3], "b", JSON_STRING, 0, 0);
+            test_token(&toks[4], "list", JSON_STRING, 0, 0);
+            test_token(&toks[5], "[1,2,3,4]", JSON_ARRAY, 4, 4);
+            test_token(&toks[6], "1", JSON_NUMBER, 0, 0);
+            test_token(&toks[7], "2", JSON_NUMBER, 0, 0);
+            test_token(&toks[8], "3", JSON_NUMBER, 0, 0);
+            test_token(&toks[9], "4", JSON_NUMBER, 0, 0);
+            test_token(&toks[10], "a", JSON_STRING, 0, 0);
+            test_token(&toks[11], "true", JSON_TRUE, 0, 0);
+            test_token(&toks[12], "b", JSON_STRING, 0, 0);
+            test_token(&toks[13], "0a1b2", JSON_STRING, 0, 0);
+            test_assert(p.cnt == 14);
+        }}
     }
 
     test_section("load_array_root")
     {
-        int count = 0;
-        int read = 0;
-        enum json_status status;
-        struct json_token toks[14];
+        struct json_token toks[14] = {{0}};
         const char buf[] = "[ 1.0, 2.0, 3.0, 4.0 ]";
 
-        memset(toks, 0,  sizeof(toks));
-        count = json_num(buf, sizeof(buf));
-        status = json_load(toks, count, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_token(&toks[0], "1.0", JSON_NUMBER, 0, 0);
-        test_token(&toks[1], "2.0", JSON_NUMBER, 0, 0);
-        test_token(&toks[2], "3.0", JSON_NUMBER, 0, 0);
-        test_token(&toks[3], "4.0", JSON_NUMBER, 0, 0);
-        test_assert(read == 4);
+        struct json_parser p = {0};
+        p.toks = toks; p.cap = 14;
+        json_load(&p, buf, sizeof(buf));
+
+        test_assert(p.err == JSON_OK);
+        if (p.err == JSON_OK) {
+            test_token(&toks[0], "1.0", JSON_NUMBER, 0, 0);
+            test_token(&toks[1], "2.0", JSON_NUMBER, 0, 0);
+            test_token(&toks[2], "3.0", JSON_NUMBER, 0, 0);
+            test_token(&toks[3], "4.0", JSON_NUMBER, 0, 0);
+            test_assert(p.cnt == 4);
+        }
     }
 
-    test_section("load_array")
+    test_section("load_invalid_array")
     {
-        int count = 0;
-        int read = 0;
-        enum json_status status;
-        struct json_token toks[14];
+        struct json_token toks[14] = {{0}};
         const char buf[] = "[\"Extra close\"]]";
 
-        memset(toks, 0,  sizeof(toks));
-        count = json_num(buf, sizeof(buf));
-        status = json_load(toks, count, &read, buf, sizeof(buf));
-        test_assert(status != JSON_OK);
+        struct json_parser p = {0};
+        p.toks = toks; p.cap = 14;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err != JSON_OK);
     }
-
 
     test_section("empty")
     {
         int count = 0;
-        int read = 0;
-        enum json_status status;
-        struct json_token toks[14];
+        struct json_token toks[14] = {{0}};
         const char buf[] =
             "{\"sub\":{\"a\": \"b\"}, \"list\":[1,2,3,4], \"a\":true, \"b\": \"0a1b2\"}";
 
-        memset(toks, 0,  sizeof(toks));
         count = json_num(buf, sizeof(buf));
         test_assert(count == 14);
-        status = json_load(toks, count, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_token(&toks[0], "sub", JSON_STRING, 0, 0);
-        test_token(&toks[1], "{\"a\": \"b\"}", JSON_OBJECT, 1, 2);
-        test_token(&toks[2], "a", JSON_STRING, 0, 0);
-        test_token(&toks[3], "b", JSON_STRING, 0, 0);
-        test_token(&toks[4], "list", JSON_STRING, 0, 0);
-        test_token(&toks[5], "[1,2,3,4]", JSON_ARRAY, 4, 4);
-        test_token(&toks[6], "1", JSON_NUMBER, 0, 0);
-        test_token(&toks[7], "2", JSON_NUMBER, 0, 0);
-        test_token(&toks[8], "3", JSON_NUMBER, 0, 0);
-        test_token(&toks[9], "4", JSON_NUMBER, 0, 0);
-        test_token(&toks[10], "a", JSON_STRING, 0, 0);
-        test_token(&toks[11], "true", JSON_TRUE, 0, 0);
-        test_token(&toks[12], "b", JSON_STRING, 0, 0);
-        test_token(&toks[13], "0a1b2", JSON_STRING, 0, 0);
-        test_assert(read == 14);
+
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 14;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_token(&toks[0], "sub", JSON_STRING, 0, 0);
+            test_token(&toks[1], "{\"a\": \"b\"}", JSON_OBJECT, 1, 2);
+            test_token(&toks[2], "a", JSON_STRING, 0, 0);
+            test_token(&toks[3], "b", JSON_STRING, 0, 0);
+            test_token(&toks[4], "list", JSON_STRING, 0, 0);
+            test_token(&toks[5], "[1,2,3,4]", JSON_ARRAY, 4, 4);
+            test_token(&toks[6], "1", JSON_NUMBER, 0, 0);
+            test_token(&toks[7], "2", JSON_NUMBER, 0, 0);
+            test_token(&toks[8], "3", JSON_NUMBER, 0, 0);
+            test_token(&toks[9], "4", JSON_NUMBER, 0, 0);
+            test_token(&toks[10], "a", JSON_STRING, 0, 0);
+            test_token(&toks[11], "true", JSON_TRUE, 0, 0);
+            test_token(&toks[12], "b", JSON_STRING, 0, 0);
+            test_token(&toks[13], "0a1b2", JSON_STRING, 0, 0);
+            test_assert(p.cnt == 14);
+        }}
     }
 
     test_section("query_simple")
     {
-        int count = 0;
-        int read = 0;
-        enum json_status status;
-        struct json_token toks[14];
+        int cnt = 0;
+        struct json_token toks[14] = {{0}};
         const char buf[] =
             "{\"sub\":{\"a\": \"b\"}, \"list\":[1,2,3,4], \"a\":true, \"b\": \"0a1b2\"}";
 
-        memset(toks, 0,  sizeof(toks));
-        count = json_num(buf, sizeof(buf));
-        test_assert(count == 14);
-        status = json_load(toks, count, &read, buf, sizeof(buf));
-        test_assert(read == 14);
-        test_assert(status == JSON_OK);
-        test_assert(json_query(toks, read, "list[0]") == &toks[6]);
-        test_assert(json_query(toks, read, "list[3]") == &toks[9]);
-        test_assert(json_query(toks, read, "sub.a") == &toks[3]);
-        test_assert(json_query(toks, read, "b") == &toks[13]);
+        cnt = json_num(buf, sizeof(buf));
+        test_assert(cnt == 14);
+
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 14;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_assert(p.cnt == 14);
+            test_assert(json_query(toks, p.cnt, "list[0]") == &toks[6]);
+            test_assert(json_query(toks, p.cnt, "list[3]") == &toks[9]);
+            test_assert(json_query(toks, p.cnt, "sub.a") == &toks[3]);
+            test_assert(json_query(toks, p.cnt, "b") == &toks[13]);
+        }}
     }
 
     test_section("query_complex")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[128];
         const char buf[] =
         "{\"map\":{"
@@ -701,62 +731,69 @@ static int run_test(void)
             "]"
         "}}";
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_assert(json_query(toks, read, "map") == &toks[1]);
-        test_assert(json_query(toks, read, "map.entity") == &toks[3]);
-        test_assert(json_query(toks, read, "map.entity[0]") == &toks[4]);
-        test_assert(json_query(toks, read, "map.entity[1]") == &toks[17]);
-        test_assert(json_query(toks, read, "map.entity[2]") == &toks[30]);
-        test_assert(json_query(toks, read, "map.entity[3]") == &toks[43]);
-        test_assert(json_query(toks, read, "map.entity[4]") == &toks[56]);
-        test_assert(json_query(toks, read, "map.entity[0].position.x") == &toks[8]);
-        test_assert(json_query(toks, read, "map.entity[2].position.y") == &toks[36]);
-        test_assert(json_query(toks, read, "map.entity[4].size.w") == &toks[66]);
-        {
-            struct json_token *tok = json_query(toks, read, "map.entity");
-            test_assert(tok->children == 5);
-        }
+
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_assert(json_query(toks, p.cnt, "map") == &toks[1]);
+            test_assert(json_query(toks, p.cnt, "map.entity") == &toks[3]);
+            test_assert(json_query(toks, p.cnt, "map.entity[0]") == &toks[4]);
+            test_assert(json_query(toks, p.cnt, "map.entity[1]") == &toks[17]);
+            test_assert(json_query(toks, p.cnt, "map.entity[2]") == &toks[30]);
+            test_assert(json_query(toks, p.cnt, "map.entity[3]") == &toks[43]);
+            test_assert(json_query(toks, p.cnt, "map.entity[4]") == &toks[56]);
+            test_assert(json_query(toks, p.cnt, "map.entity[0].position.x") == &toks[8]);
+            test_assert(json_query(toks, p.cnt, "map.entity[2].position.y") == &toks[36]);
+            test_assert(json_query(toks, p.cnt, "map.entity[4].size.w") == &toks[66]);
+            {
+                struct json_token *tok = json_query(toks, p.cnt, "map.entity");
+                test_assert(tok->children == 5);
+            }
+        }}
     }
 
     test_section("query_entangled")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[128];
         const char buf[] = "{\"b\": {\"a\": {\"b\":5}, \"b\":[1,2,3,4],"
             "\"c\":\"test\", \"d\":true, \"e\":false, \"f\":null, \"g\":10},"
             "\"a\": [{\"b\":5}, [1,2,3,4], \"test\", true, false, null, 10]}";
 
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128 , &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_assert(json_query(toks, read, "b") == &toks[1]);
-        test_assert(json_query(toks, read, "b.a") == &toks[3]);
-        test_assert(json_query(toks, read, "b.a.b") == &toks[5]);
-        test_assert(json_query(toks, read, "b.b") == &toks[7]);
-        test_assert(json_query(toks, read, "b.c") == &toks[13]);
-        test_assert(json_query(toks, read, "b.d") == &toks[15]);
-        test_assert(json_query(toks, read, "b.e") == &toks[17]);
-        test_assert(json_query(toks, read, "b.f") == &toks[19]);
-        test_assert(json_query(toks, read, "a[0]") == &toks[24]);
-        test_assert(json_query(toks, read, "a[0].b") == &toks[26]);
-        test_assert(json_query(toks, read, "a[1]") == &toks[27]);
-        test_assert(json_query(toks, read, "a[1][0]") == &toks[28]);
-        test_assert(json_query(toks, read, "a[1][1]") == &toks[29]);
-        test_assert(json_query(toks, read, "a[1][2]") == &toks[30]);
-        test_assert(json_query(toks, read, "a[1][3]") == &toks[31]);
-        test_assert(json_query(toks, read, "a[2]") == &toks[32]);
-        test_assert(json_query(toks, read, "a[3]") == &toks[33]);
-        test_assert(json_query(toks, read, "a[4]") == &toks[34]);
-        test_assert(json_query(toks, read, "a[5]") == &toks[35]);
-        test_assert(json_query(toks, read, "a[6]") == &toks[36]);
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_assert(json_query(toks, p.cnt, "b") == &toks[1]);
+            test_assert(json_query(toks, p.cnt, "b.a") == &toks[3]);
+            test_assert(json_query(toks, p.cnt, "b.a.b") == &toks[5]);
+            test_assert(json_query(toks, p.cnt, "b.b") == &toks[7]);
+            test_assert(json_query(toks, p.cnt, "b.c") == &toks[13]);
+            test_assert(json_query(toks, p.cnt, "b.d") == &toks[15]);
+            test_assert(json_query(toks, p.cnt, "b.e") == &toks[17]);
+            test_assert(json_query(toks, p.cnt, "b.f") == &toks[19]);
+            test_assert(json_query(toks, p.cnt, "a[0]") == &toks[24]);
+            test_assert(json_query(toks, p.cnt, "a[0].b") == &toks[26]);
+            test_assert(json_query(toks, p.cnt, "a[1]") == &toks[27]);
+            test_assert(json_query(toks, p.cnt, "a[1][0]") == &toks[28]);
+            test_assert(json_query(toks, p.cnt, "a[1][1]") == &toks[29]);
+            test_assert(json_query(toks, p.cnt, "a[1][2]") == &toks[30]);
+            test_assert(json_query(toks, p.cnt, "a[1][3]") == &toks[31]);
+            test_assert(json_query(toks, p.cnt, "a[2]") == &toks[32]);
+            test_assert(json_query(toks, p.cnt, "a[3]") == &toks[33]);
+            test_assert(json_query(toks, p.cnt, "a[4]") == &toks[34]);
+            test_assert(json_query(toks, p.cnt, "a[5]") == &toks[35]);
+            test_assert(json_query(toks, p.cnt, "a[6]") == &toks[36]);
+        }}
     }
 
     test_section("query_sub")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[128];
         struct json_token *entity;
         struct json_token *position;
@@ -772,36 +809,41 @@ static int run_test(void)
                 "{\"position\": {\"x\":5, \"y\":5}, \"size\":{\"w\":5,\"h\":5}}"
             "]"
         "}}";
-
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        entity = json_query(toks, read, "map.entity[2]");
-        test_assert(entity == &toks[30]);
-        position = json_query(entity, entity->sub, "position");
-        test_assert(position == &toks[32]);
-        size = json_query(entity, entity->sub, "size");
-        test_assert(size == &toks[38]);
-        {
-            struct json_token *x, *y;
-            x = json_query(position, position->sub, "x");
-            y = json_query(position, position->sub, "y");
-            test_assert(x == &toks[34]);
-            test_assert(y == &toks[36]);
-        }
-        {
-            struct json_token *w, *h;
-            w = json_query(size, size->sub, "w");
-            h = json_query(size, size->sub, "h");
-            test_assert(w == &toks[40]);
-            test_assert(h == &toks[42]);
-        }
+
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            entity = json_query(toks, p.cnt, "map.entity[2]");
+            test_assert(entity == &toks[30]);
+
+            position = json_query(entity, entity->sub, "position");
+            test_assert(position == &toks[32]);
+
+            size = json_query(entity, entity->sub, "size");
+            test_assert(size == &toks[38]);
+            {
+                struct json_token *x, *y;
+                x = json_query(position, position->sub, "x");
+                y = json_query(position, position->sub, "y");
+                test_assert(x == &toks[34]);
+                test_assert(y == &toks[36]);
+            }
+            {
+                struct json_token *w, *h;
+                w = json_query(size, size->sub, "w");
+                h = json_query(size, size->sub, "h");
+                test_assert(w == &toks[40]);
+                test_assert(h == &toks[42]);
+            }
+        }}
     }
 
     test_section("query_number")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[128];
         json_number num;
         int ret;
@@ -819,38 +861,41 @@ static int run_test(void)
         "}}";
 
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        for (i = 0; i < 5; ++i) {
-            char path[32];
-            sprintf(path, "map.entity[%d].position.x", i);
-            ret = json_query_number(&num, toks, read, path);
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
 
-            sprintf(path, "map.entity[%d].position.y", i);
-            ret = json_query_number(&num, toks, read, path);
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
+        if (p.err == JSON_OK) {
+            for (i = 0; i < 5; ++i) {
+                char path[32];
+                sprintf(path, "map.entity[%d].position.x", i);
+                ret = json_query_number(&num, toks, p.cnt, path);
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
 
-            sprintf(path, "map.entity[%d].size.w", i);
-            ret = json_query_number(&num, toks, read, path);
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
+                sprintf(path, "map.entity[%d].position.y", i);
+                ret = json_query_number(&num, toks, p.cnt, path);
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
 
-            sprintf(path, "map.entity[%d].size.h", i);
-            ret = json_query_number(&num, toks, read, path);
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
-        }
-        test_assert(json_query_number(&num, toks, read, "map.test") == JSON_NONE);
-        test_assert(json_query_number(&num, toks, read, "map.entity") == JSON_ARRAY);
+                sprintf(path, "map.entity[%d].size.w", i);
+                ret = json_query_number(&num, toks, p.cnt, path);
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
+
+                sprintf(path, "map.entity[%d].size.h", i);
+                ret = json_query_number(&num, toks, p.cnt, path);
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
+            }
+            test_assert(json_query_number(&num, toks, p.cnt, "map.test") == JSON_NONE);
+            test_assert(json_query_number(&num, toks, p.cnt, "map.entity") == JSON_ARRAY);
+        }}
     }
 
     test_section("query_string")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[128];
         char buffer[256];
         int size;
@@ -860,56 +905,65 @@ static int run_test(void)
             "\"a\": [{\"b\":5}, [1,2,3,4], \"test\", true, false, null, 10]}";
 
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_assert(json_query_string(buffer, 256, &size, toks, read, "b.c")==JSON_STRING);
-        test_assert(!strcmp(buffer, "test"));
-        test_assert(json_query_string(buffer, 256, &size, toks, read, "a[2]")==JSON_STRING);
-        test_assert(!strcmp(buffer, "test"));
-        test_assert(json_query_string(buffer, 256, &size, toks, read, "a[0]")==JSON_OBJECT);
-        test_assert(json_query_string(buffer, 256, &size, toks, read, "b.d")==JSON_TRUE);
-        test_assert(json_query_string(buffer, 256, &size, toks, read, "b.h")==JSON_NONE);
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_assert(json_query_string(buffer, 256, &size, toks, p.cnt, "b.c")==JSON_STRING);
+            test_assert(!strcmp(buffer, "test"));
+            test_assert(json_query_string(buffer, 256, &size, toks, p.cnt, "a[2]")==JSON_STRING);
+            test_assert(!strcmp(buffer, "test"));
+            test_assert(json_query_string(buffer, 256, &size, toks, p.cnt, "a[0]")==JSON_OBJECT);
+            test_assert(json_query_string(buffer, 256, &size, toks, p.cnt, "b.d")==JSON_TRUE);
+            test_assert(json_query_string(buffer, 256, &size, toks, p.cnt, "b.h")==JSON_NONE);
+        }}
     }
 
     test_section("query_type")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[128];
         const char buf[] = "{\"b\": {\"a\": {\"b\":5}, \"b\":[1,2,3,4],"
             "\"c\":\"test\", \"d\":true, \"e\":false, \"f\":null, \"g\":10},"
             "\"a\": [{\"b\":5}, [1,2,3,4], \"test\", true, false, null, 10]}";
 
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_assert(json_query_type(toks, read, "b") == JSON_OBJECT);
-        test_assert(json_query_type(toks, read, "b.b") == JSON_ARRAY);
-        test_assert(json_query_type(toks, read, "b.b[0]") == JSON_NUMBER);
-        test_assert(json_query_type(toks, read, "b.c") == JSON_STRING);
-        test_assert(json_query_type(toks, read, "b.d") == JSON_TRUE);
-        test_assert(json_query_type(toks, read, "b.e") == JSON_FALSE);
-        test_assert(json_query_type(toks, read, "b.f") == JSON_NULL);
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            test_assert(json_query_type(toks, p.cnt, "b") == JSON_OBJECT);
+            test_assert(json_query_type(toks, p.cnt, "b.b") == JSON_ARRAY);
+            test_assert(json_query_type(toks, p.cnt, "b.b[0]") == JSON_NUMBER);
+            test_assert(json_query_type(toks, p.cnt, "b.c") == JSON_STRING);
+            test_assert(json_query_type(toks, p.cnt, "b.d") == JSON_TRUE);
+            test_assert(json_query_type(toks, p.cnt, "b.e") == JSON_FALSE);
+            test_assert(json_query_type(toks, p.cnt, "b.f") == JSON_NULL);
+        }}
     }
     test_section("test_case")
     {
-        int read = 0;
-        json_number val;
-        enum json_status status;
         struct json_token toks[128];
-
         const char buf[] = "{\"value\": [0.500000, -0.012345, 1.0000]}";
+
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 128, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        test_assert(json_query_type(toks, read, "value[1]") == JSON_NUMBER);
-        json_query_number(&val, toks, read, "value[1]");
-        test_assert(fabs(val - (-0.012345)) < 0.00000001);
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 128;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            json_number val;
+            test_assert(json_query_type(toks, p.cnt, "value[1]") == JSON_NUMBER);
+            json_query_number(&val, toks, p.cnt, "value[1]");
+            test_assert(fabs(val - (-0.012345)) < 0.00000001);
+        }}
     }
     test_section("array_iteration")
     {
-        int read = 0;
-        enum json_status status;
         struct json_token toks[256];
         struct json_token *a = 0;
         json_number num;
@@ -928,69 +982,105 @@ static int run_test(void)
         "}}";
 
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 256, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        a = json_query(toks, read, "map.entity");
-        test_assert(a != 0);
-        test_assert(a->type == JSON_ARRAY);
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 256;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
 
-        /* iterate over each array element */
-        {struct json_token *ent = json_array_begin(a);
-        for (i = 0; i < a->children && ent; ++i) {
-            /* position */
-            struct json_token *pos = json_query(ent, ent->sub, "position");
-            ret = json_query_number(&num, pos, pos->sub, "x");
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
+        if (p.err == JSON_OK) {
+            a = json_query(toks, p.cnt, "map.entity");
+            test_assert(a != 0);
+            test_assert(a->type == JSON_ARRAY);
 
-            ret = json_query_number(&num, pos, pos->sub, "y");
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
+            /* iterate over each array element */
+            {struct json_token *ent = json_array_begin(a);
+            for (i = 0; i < a->children && ent; ++i) {
+                /* position */
+                struct json_token *pos = json_query(ent, ent->sub, "position");
+                ret = json_query_number(&num, pos, pos->sub, "x");
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
 
-            /* size */
-            {struct json_token *size = json_query(ent, ent->sub, "size");
-            ret = json_query_number(&num, size, size->sub, "w");
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
+                ret = json_query_number(&num, pos, pos->sub, "y");
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
 
-            ret = json_query_number(&num, size, size->sub, "h");
-            test_assert(ret == JSON_NUMBER);
-            test_assert(num == (json_number)(i + 1));
-            ent = json_array_next(ent);}
+                /* size */
+                {struct json_token *size = json_query(ent, ent->sub, "size");
+                ret = json_query_number(&num, size, size->sub, "w");
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
+
+                ret = json_query_number(&num, size, size->sub, "h");
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == (json_number)(i + 1));
+                ent = json_array_next(ent);}
+            }}
         }}
     }
-    test_section("map_iteration")
+    test_section("root_iteration")
     {
-        int read = 0;
-        enum json_status status;
-        struct json_token toks[256];
-        struct json_token *m = 0;
-        json_number num;
         int ret;
-        int i = 0;
+        struct json_token toks[256];
+        const char buf[] = "{\"a\"=5,\"b\"=true,\"c\"=false}";
 
+        memset(toks, 0,  sizeof(toks));
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 256;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
+
+        if (p.err == JSON_OK) {
+            json_number num;
+
+            /* iterate over each root object element */
+            {struct json_token *elm = toks;
+            while (elm < toks + p.cnt) {
+                if (json_cmp(&elm[0], "a") == 0) {
+                    ret = json_convert(&num, &elm[1]);
+                    test_assert(ret == JSON_NUMBER);
+                    test_assert(num == 5.0f);
+                } else if (json_cmp(&elm[0], "b") == 0)
+                    test_assert(elm[1].type == JSON_TRUE);
+                else if (json_cmp(&elm[0], "c") == 0)
+                    test_assert(elm[1].type == JSON_FALSE);
+                elm = json_obj_next(elm);
+            }}
+        }}
+    }
+    test_section("object_iteration")
+    {
+        int ret, i = 0;
+        struct json_token toks[256];
         const char buf[] = "{\"map\":{\"a\"=5,\"b\"=true,\"c\"=false}}";
 
         memset(toks, 0,  sizeof(toks));
-        status = json_load(toks, 256, &read, buf, sizeof(buf));
-        test_assert(status == JSON_OK);
-        m = json_query(toks, read, "map");
-        test_assert(m != 0);
-        test_assert(m->type == JSON_OBJECT);
+        {struct json_parser p = {0};
+        p.toks = toks; p.cap = 256;
+        json_load(&p, buf, sizeof(buf));
+        test_assert(p.err == JSON_OK);
 
-        /* iterate over each map element */
-        {struct json_token *elm = json_obj_begin(m);
-        for (i = 0; i < m->children && elm; ++i) {
-            if (!json_cmp(&elm[0], "a")) {
-                ret = json_convert(&num, &elm[1]);
-                test_assert(ret == JSON_NUMBER);
-                test_assert(num == 5.0f);
-            } else if (!json_cmp(&elm[0], "b"))
-                test_assert(elm[1].type == JSON_TRUE);
-            else if (!json_cmp(&elm[0], "c"))
-                test_assert(elm[1].type == JSON_FALSE);
-            elm = json_obj_next(elm);
+        if (p.err == JSON_OK) {
+            json_number num;
+            struct json_token *m = json_query(toks, p.cnt, "map");
+            test_assert(m != 0);
+            test_assert(m->type == JSON_OBJECT);
+
+            /* iterate over each map element */
+            {struct json_token *elm = json_obj_begin(m);
+            for (i = 0; i < m->children && elm; ++i) {
+                if (json_cmp(&elm[0], "a") == 0) {
+                    ret = json_convert(&num, &elm[1]);
+                    test_assert(ret == JSON_NUMBER);
+                    test_assert(num == 5.0f);
+                } else if (json_cmp(&elm[0], "b") == 0)
+                    test_assert(elm[1].type == JSON_TRUE);
+                else if (json_cmp(&elm[0], "c") == 0)
+                    test_assert(elm[1].type == JSON_FALSE);
+                elm = json_obj_next(elm);
+            }}
         }}
+
     }
     test_result();
     return fail_count;

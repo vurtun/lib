@@ -93,13 +93,9 @@ extern "C" {
 #define JSON_API extern
 #endif
 
-/*-------------------------------------------------------------------------
-                                API
+/*--------------------------------------------------------------------------
+                                INTERNAL
   -------------------------------------------------------------------------*/
-#ifndef JSON_DELIMITER
-#define JSON_DELIMITER '.'
-#endif
-
 typedef double json_number;
 enum json_token_type {
     JSON_NONE,      /* invalid token */
@@ -123,30 +119,10 @@ struct json_pair {
     struct json_token name;
     struct json_token value;
 };
-enum json_status {
-    JSON_OK = 0,
-    JSON_INVAL,
-    JSON_OUT_OF_TOKEN,
-    JSON_PARSING_ERROR
-};
-
-/* parse JSON into token array */
-JSON_API int                json_num(const char *json, int length);
-JSON_API enum json_status   json_load(struct json_token *toks, int max, int *read, const char *json, int length);
-
-/* access nodes inside token array */
-JSON_API struct json_token *json_query(struct json_token *toks, int count, const char *path);
-JSON_API int                json_query_number(json_number*, struct json_token *toks, int count, const char *path);
-JSON_API int                json_query_string(char*, int max, int *size, struct json_token*, int count, const char *path);
-JSON_API int                json_query_type(struct json_token *toks, int count, const char *path);
-
-/*--------------------------------------------------------------------------
-                                INTERNAL
-  -------------------------------------------------------------------------*/
 struct json_iter {
     int len;
     unsigned short err;
-    unsigned depth;
+    unsigned short depth;
     const char *go;
     const char *src;
 };
@@ -159,6 +135,49 @@ JSON_API struct json_iter   json_parse(struct json_pair*, const struct json_iter
 JSON_API int                json_cmp(const struct json_token*, const char*);
 JSON_API int                json_cpy(char*, int, const struct json_token*);
 JSON_API int                json_convert(json_number *, const struct json_token*);
+
+/*-------------------------------------------------------------------------
+                                API
+  -------------------------------------------------------------------------*/
+#ifndef JSON_DELIMITER
+#define JSON_DELIMITER '.'
+#endif
+
+#ifndef JSON_INITIAL_CAPACITY
+#define JSON_INITIAL_CAPACITY 256
+#endif
+
+#ifndef JSON_MAX_DEPTH
+#define JSON_MAX_DEPTH 512
+#endif
+
+enum json_status {
+    JSON_OK = 0,
+    JSON_INVAL,
+    JSON_OUT_OF_TOKEN,
+    JSON_STACK_OVERFLOW,
+    JSON_PARSING_ERROR
+};
+struct json_parser {
+    enum json_status err;
+    struct json_token *toks;
+    int cnt, cap;
+
+    /* internal */
+    struct json_iter *iter;
+    struct json_iter stk[JSON_MAX_DEPTH];
+    struct json_token tok;
+};
+
+/* parse JSON into token array tree */
+JSON_API int                json_num(const char *json, int length);
+JSON_API int                json_load(struct json_parser *p, const char *str, int len);
+
+/* access nodes inside token array */
+JSON_API struct json_token *json_query(struct json_token *toks, int count, const char *path);
+JSON_API int                json_query_number(json_number*, struct json_token *toks, int count, const char *path);
+JSON_API int                json_query_string(char*, int max, int *size, struct json_token*, int count, const char *path);
+JSON_API int                json_query_type(struct json_token *toks, int count, const char *path);
 
 #ifdef __cplusplus
 }
@@ -960,62 +979,95 @@ json_parse(struct json_pair *p, const struct json_iter* it)
                                 PARSER
   -------------------------------------------------------------------------*/
 JSON_API int
-json_num(const char *json, int length)
+json_num(const char *str, int len)
 {
     struct json_iter iter;
     struct json_token tok;
-    int count = 0;
+    int cnt = 0;
 
     JSON_ASSERT(json);
     JSON_ASSERT(length > 0);
-    if (!json || !length)
+    if (!str || !len)
         return 0;
 
-    iter = json_begin(json, length);
+    iter = json_begin(str, len);
     iter = json_read(&tok, &iter);
     while (!iter.err && iter.src && tok.str) {
-        count += (1 + tok.sub);
+        cnt += (1 + tok.sub);
         iter = json_read(&tok, &iter);
-    } return count;
+    } return cnt;
 }
-JSON_API enum json_status
-json_load(struct json_token *toks, int max, int *read,
-            const char *json, int length)
+JSON_API int
+json_load(struct json_parser *p, const char *str, int len)
 {
-    enum json_status status = JSON_OK;
-    struct json_token tok;
-    struct json_iter iter;
+    JSON_ASSERT(p);
+    JSON_ASSERT(str);
+    JSON_ASSERT(len > 0);
 
-    JSON_ASSERT(toks);
-    JSON_ASSERT(json);
-    JSON_ASSERT(length > 0);
-    JSON_ASSERT(max > 0);
-    JSON_ASSERT(read);
+    if (!str || !len)
+        return 0;
+    if (p->iter == NULL) {
+        /* initialize state-machine */
+        p->iter = p->stk;
 
-    if (!toks || !json || !length || !max || !read)
-        return JSON_INVAL;
-    if (*read >= max)
-        return JSON_OUT_OF_TOKEN;
-
-    iter = json_begin(json, length);
-    iter = json_read(&tok, &iter);
-    if (iter.err && iter.len)
-        return JSON_PARSING_ERROR;
-
-    while (iter.len) {
-        toks[*read] = tok;
-        *read += 1;
-
-        if (*read > max) return JSON_OUT_OF_TOKEN;
-        if (toks[*read-1].type == JSON_OBJECT ||  toks[*read-1].type == JSON_ARRAY) {
-            status = json_load(toks, max, read, toks[*read-1].str, toks[*read-1].len);
-            if (status != JSON_OK) return status;
+        *p->iter = json_begin(str, len);
+        *p->iter = json_read(&p->tok, p->iter);
+        if (p->iter->err && p->iter->len) {
+            p->err = JSON_PARSING_ERROR;
+            return 0;
         }
-        iter = json_read(&tok, &iter);
-        if (iter.err && iter.src && iter.len)
-            return JSON_PARSING_ERROR;
-    } return status;
+        if (!p->cap || !p->toks) {
+            if (!p->toks && !p->cap)
+                p->cap = JSON_INITIAL_CAPACITY;
+            return 1;
+        }
+    }
+    JSON_ASSERT(p->cap);
+    JSON_ASSERT(p->toks);
+    while (p->iter->len || p->iter > p->stk) {
+        if (p->cnt >= p->cap) {
+            /* handle not enough memory */
+            p->cap = p->cap << 1;
+            p->err = JSON_OUT_OF_TOKEN;
+            return 1;
+        }
+        p->toks[p->cnt++] = p->tok;
+        if (p->tok.type == JSON_OBJECT ||
+            p->tok.type == JSON_ARRAY) {
+            /* handle recursive down parsing using fixed stack */
+            if (p->iter + 1 >= p->stk + JSON_MAX_DEPTH) {
+                p->err = JSON_STACK_OVERFLOW;
+                return 0;
+            }
+            p->iter++;
+            *p->iter = json_begin(p->tok.str, p->tok.len);
+            *p->iter = json_read(&p->tok, p->iter);
+            if (p->iter->err && p->iter->len) {
+                p->err = JSON_PARSING_ERROR;
+                return 0;
+            }
+        } else {
+            /* handle single value token */
+            *p->iter = json_read(&p->tok, p->iter);
+            if (p->iter->err && p->iter->src && p->iter->len) {
+                p->err = JSON_PARSING_ERROR;
+                return 0;
+            }
+        }
+        while (!p->iter->len && p->iter > p->stk && p->tok.type == JSON_NONE) {
+            /* handle end of array/object */
+            p->iter--;
+            *p->iter = json_read(&p->tok, p->iter);
+            if (p->iter->err && p->iter->src && p->iter->len) {
+                p->err = JSON_PARSING_ERROR;
+                return 0;
+            }
+        }
+    }
+    p->err = JSON_OK;
+    return 0;
 }
+
 /*--------------------------------------------------------------------------
                                 QUERY
   -------------------------------------------------------------------------*/
