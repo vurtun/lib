@@ -240,7 +240,6 @@ static int run_test(void)
         json_number num;
         struct json_token tok;
         struct json_iter iter;
-        struct json_pair pair;
         const char *toks[] = {0, "1.0", "2.0", "3.0", "4.0"};
 
         const char buf[] = "[1.0, 2.0, 3.0, 4.0 ]";
@@ -259,7 +258,6 @@ static int run_test(void)
     {
         struct json_iter iter;
         struct json_pair pair;
-        struct json_token tok;
         char buffer[8];
 
         const char buf[] = "\"name\"=\"value\"";
@@ -278,11 +276,8 @@ static int run_test(void)
 
     test_section("RTFC7159_2")
     {
-        int i = 1;
-        json_number num;
         struct json_iter iter;
         struct json_token tok;
-        char buffer[8];
 
         const char buf[] = "1.0";
         iter = json_begin(buf, sizeof(buf));
@@ -294,11 +289,8 @@ static int run_test(void)
 
     test_section("RTFC7159_3")
     {
-        int i = 1;
-        json_number num;
         struct json_iter iter;
         struct json_token tok;
-        char buffer[8];
 
         const char buf[] = "true";
         iter = json_begin(buf, sizeof(buf));
@@ -309,11 +301,8 @@ static int run_test(void)
 
     test_section("RTFC7159_4")
     {
-        int i = 1;
-        json_number num;
         struct json_iter iter;
         struct json_token tok;
-        char buffer[8];
 
         const char buf[] = "false";
         iter = json_begin(buf, sizeof(buf));
@@ -324,11 +313,8 @@ static int run_test(void)
 
     test_section("RTFC7159_5")
     {
-        int i = 1;
-        json_number num;
         struct json_iter iter;
         struct json_token tok;
-        char buffer[8];
 
         const char buf[] = "null";
         iter = json_begin(buf, sizeof(buf));
@@ -339,11 +325,8 @@ static int run_test(void)
 
     test_section("extension")
     {
-        int i = 1;
-        json_number num;
         struct json_iter iter;
         struct json_pair pair;
-        char buffer[8];
 
         const char buf[] = "\"name\"=\"value\", \"value\":5";
         iter = json_begin(buf, sizeof(buf));
@@ -923,10 +906,95 @@ static int run_test(void)
         json_query_number(&val, toks, read, "value[1]");
         test_assert(fabs(val - (-0.012345)) < 0.00000001);
     }
+    test_section("array_iteration")
+    {
+        int read = 0;
+        enum json_status status;
+        struct json_token toks[256];
+        struct json_token *a = 0;
+        json_number num;
+        int ret;
+        int i = 0;
+
+        const char buf[] =
+        "{\"map\":{"
+            "\"entity\":["
+                "{\"position\": {\"x\":1, \"y\":1}, \"size\":{\"w\":1,\"h\":1}},"
+                "{\"position\": {\"x\":2, \"y\":2}, \"size\":{\"w\":2,\"h\":2}},"
+                "{\"position\": {\"x\":3, \"y\":3}, \"size\":{\"w\":3,\"h\":3}},"
+                "{\"position\": {\"x\":4, \"y\":4}, \"size\":{\"w\":4,\"h\":4}},"
+                "{\"position\": {\"x\":5, \"y\":5}, \"size\":{\"w\":5,\"h\":5}}"
+            "]"
+        "}}";
+
+        memset(toks, 0,  sizeof(toks));
+        status = json_load(toks, 256, &read, buf, sizeof(buf));
+        test_assert(status == JSON_OK);
+        a = json_query(toks, read, "map.entity");
+        test_assert(a != 0);
+        test_assert(a->type == JSON_ARRAY);
+
+        /* iterate over each array element */
+        {struct json_token *ent = json_array_begin(a);
+        for (i = 0; i < a->children && ent; ++i) {
+            /* position */
+            struct json_token *pos = json_query(ent, ent->sub, "position");
+            ret = json_query_number(&num, pos, pos->sub, "x");
+            test_assert(ret == JSON_NUMBER);
+            test_assert(num == (json_number)(i + 1));
+
+            ret = json_query_number(&num, pos, pos->sub, "y");
+            test_assert(ret == JSON_NUMBER);
+            test_assert(num == (json_number)(i + 1));
+
+            /* size */
+            {struct json_token *size = json_query(ent, ent->sub, "size");
+            ret = json_query_number(&num, size, size->sub, "w");
+            test_assert(ret == JSON_NUMBER);
+            test_assert(num == (json_number)(i + 1));
+
+            ret = json_query_number(&num, size, size->sub, "h");
+            test_assert(ret == JSON_NUMBER);
+            test_assert(num == (json_number)(i + 1));
+            ent = json_array_next(ent);}
+        }}
+    }
+    test_section("map_iteration")
+    {
+        int read = 0;
+        enum json_status status;
+        struct json_token toks[256];
+        struct json_token *m = 0;
+        json_number num;
+        int ret;
+        int i = 0;
+
+        const char buf[] = "{\"map\":{\"a\"=5,\"b\"=true,\"c\"=false}}";
+
+        memset(toks, 0,  sizeof(toks));
+        status = json_load(toks, 256, &read, buf, sizeof(buf));
+        test_assert(status == JSON_OK);
+        m = json_query(toks, read, "map");
+        test_assert(m != 0);
+        test_assert(m->type == JSON_OBJECT);
+
+        /* iterate over each map element */
+        {struct json_token *elm = json_obj_begin(m);
+        for (i = 0; i < m->children && elm; ++i) {
+            if (!json_cmp(&elm[0], "a")) {
+                ret = json_convert(&num, &elm[1]);
+                test_assert(ret == JSON_NUMBER);
+                test_assert(num == 5.0f);
+            } else if (!json_cmp(&elm[0], "b"))
+                test_assert(elm[1].type == JSON_TRUE);
+            else if (!json_cmp(&elm[0], "c"))
+                test_assert(elm[1].type == JSON_FALSE);
+            elm = json_obj_next(elm);
+        }}
+    }
     test_result();
     return fail_count;
 }
-
 int main(void)
 {
     return run_test();

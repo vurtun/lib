@@ -806,7 +806,7 @@ json_read(struct json_token *obj, const struct json_iter* prev)
 {
     int len;
     const char *cur;
-    unsigned char c;
+    unsigned char c = 0;
     int utf8_remain = 0;
     struct json_iter iter;
 
@@ -1206,7 +1206,7 @@ json_query_number(json_number *num, struct json_token *toks, int count,
     tok = json_query(toks, count, path);
     if (!tok) return JSON_NONE;
     if (tok->type != JSON_NUMBER)
-        return tok->type;
+        return (int)tok->type;
     return json_convert(num, tok);
 }
 JSON_API int
@@ -1225,9 +1225,9 @@ json_query_string(char *buffer, int max, int *size,
     tok = json_query(toks, count, path);
     if (!tok) return JSON_NONE;
     if (tok->type != JSON_STRING)
-        return tok->type;
+        return (int)tok->type;
     *size = json_cpy(buffer, max, tok);
-    return tok->type;
+    return (int)tok->type;
 }
 JSON_API int
 json_query_type(struct json_token *toks, int count, const char *path)
@@ -1241,7 +1241,42 @@ json_query_type(struct json_token *toks, int count, const char *path)
 
     tok = json_query(toks, count, path);
     if (!tok) return JSON_NONE;
-    return tok->type;
+    return (int)tok->type;
+}
+JSON_API struct json_token*
+json_array_begin(struct json_token *tok)
+{
+    if (tok->type != JSON_ARRAY)
+        return NULL;
+    if (tok->children == 0)
+        return NULL;
+    return tok + 1;
+}
+JSON_API struct json_token*
+json_array_next(struct json_token *tok)
+{
+    if (tok->type == JSON_ARRAY ||
+        tok->type == JSON_OBJECT)
+        return tok + (tok->sub) + 1;
+    else return tok + 1;
+}
+JSON_API struct json_token*
+json_obj_begin(struct json_token *tok)
+{
+    if (tok->type != JSON_OBJECT)
+        return NULL;
+    if (tok->children == 0)
+        return NULL;
+    return tok + 1;
+}
+JSON_API struct json_token*
+json_obj_next(struct json_token *toks)
+{
+    if (toks[1].type == JSON_ARRAY ||
+        toks[1].type == JSON_OBJECT) {
+        toks = (toks + 1) + toks[1].sub;
+    } else toks = toks + 2;
+    return toks;
 }
 #endif
 
