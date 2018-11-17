@@ -109,8 +109,8 @@ enum json_token_type {
     JSON_MAX
 };
 struct json_token {
-    enum json_token_type type;
     const char *str;
+    enum json_token_type type;
     int len;
     int children; /* number of direct child tokens */
     int sub; /* total number of subtokens (note: not pairs)*/

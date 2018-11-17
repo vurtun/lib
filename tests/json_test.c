@@ -1,8 +1,3 @@
-/*
-    Copyright (c) 2016
-    vurtun <polygone@gmx.net>
-    zlib license
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
