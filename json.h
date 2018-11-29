@@ -72,6 +72,33 @@ EXAMPLES:*/
     json_token *entity = json_query(toks, num, "map.entity[4]");
     json_token *position = json_query(entity, entity->sub, "position");
     json_token *rotation = json_query(entity, entity->sub, "rotation");
+
+    /* iterate root */
+    struct json_token *elm = toks;
+    while (elm < toks + p.cnt) {
+        if (json_cmp(&elm[0], "name") == 0)
+            ret = json_convert(&num, &elm[1]);
+        elm = json_obj_next(elm);
+    }
+
+    /* iterate over map pairs */
+    struct json_token *elm = json_obj_begin(m);
+    for (i = 0; i < m->children && elm; ++i) {
+        if (json_cmp(&elm[0], "a") == 0) {
+            ret = json_convert(&num, &elm[1]);
+            /* ... */
+        }
+        elm = json_obj_next(elm);
+    }
+
+    /* iterate array elements */
+    struct json_token *a = json_query(toks, p.cnt, "map.entities");
+    struct json_token *ent = json_array_begin(a);
+    for (i = 0; i < a->children && ent; ++i) {
+        struct json_token *pos = json_query(ent, ent->sub, "position");
+        /*... */
+        ar = json_array_next(ar);}
+    }
 #endif
 
  /* ===============================================================
