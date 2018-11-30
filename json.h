@@ -54,34 +54,35 @@ EXAMPLES:*/
         p.toks = realloc(p.toks, (size_t)p.cap * sizeof(struct json_token));
 
     /* query token */
-    struct json_token *t0 = json_query(toks, p.cnt, "map.entity[4].position");
+    struct json_token *t0 = json_query(p.toks, p.cnt, "map.entity[4].position");
 
     /* query string */
     size_t size;
     char buffer[64];
-    json_query_string(buffer, 64, &size, toks, p.cnt, "map.entity[4].name");
+    json_query_string(buffer, 64, &size, p.toks, p.cnt, "map.entity[4].name");
 
     /* query number */
     json_number num;
-    json_query_number(&num, toks, num, "map.soldier[2].position.x");
+    json_query_number(&num, p.toks, p.cnt, "map.soldier[2].position.x");
 
     /* query type */
-    int type0 = json_query_number(toks, num, "map.soldier[2]");
+    int type0 = json_query_number(p.toks, p.cnt, "map.soldier[2]");
 
     /* sub-queries */
-    json_token *entity = json_query(toks, num, "map.entity[4]");
+    json_token *entity = json_query(p.toks, p.cnt, "map.entity[4]");
     json_token *position = json_query(entity, entity->sub, "position");
     json_token *rotation = json_query(entity, entity->sub, "rotation");
 
     /* iterate root */
-    struct json_token *elm = toks;
-    while (elm < toks + p.cnt) {
+    struct json_token *elm = p.toks;
+    while (elm < p.toks + p.cnt) {
         if (json_cmp(&elm[0], "name") == 0)
             ret = json_convert(&num, &elm[1]);
         elm = json_obj_next(elm);
     }
 
     /* iterate over map pairs */
+    struct json_token *m = json_query(p.toks, p.cnt, "map.soldier[2]");
     struct json_token *elm = json_obj_begin(m);
     for (i = 0; i < m->children && elm; ++i) {
         if (json_cmp(&elm[0], "a") == 0) {
@@ -92,12 +93,12 @@ EXAMPLES:*/
     }
 
     /* iterate array elements */
-    struct json_token *a = json_query(toks, p.cnt, "map.entities");
+    struct json_token *a = json_query(p.toks, p.cnt, "map.entities");
     struct json_token *ent = json_array_begin(a);
     for (i = 0; i < a->children && ent; ++i) {
         struct json_token *pos = json_query(ent, ent->sub, "position");
         /*... */
-        ar = json_array_next(ar);}
+        ent = json_array_next(ent);}
     }
 #endif
 
