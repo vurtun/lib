@@ -81,7 +81,7 @@ CONTRIBUTORS:
 
 EXAMPLES:*/
 #if 0
-    static void parallel_task(void *pArg, struct scheduler *s, sched_uint begin, sched_uint end, sched_uint thread) {
+    static void parallel_task(void *pArg, struct scheduler *s, struct sched_task_partition p, sched_uint thread_num) {
         /* Do something here, cann issue additional tasks into the scheduler */
     }
 
@@ -96,10 +96,10 @@ EXAMPLES:*/
         scheduler_start(&sched, memory);
         {
             struct sched_task task;
-            scheduler_add(&sched, &task, parallel_task, 0, 1, 1);
+            scheduler_add(&sched, &task, parallel_task, NULL, 1, 1);
             scheduler_join(&sched, &task);
         }
-        scheduler_stop(&sched);
+        scheduler_stop(&sched, 1);
         free(memory);
     }
 #endif
@@ -121,7 +121,7 @@ extern "C" {
 #define SCHED_API extern
 #endif
 
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L)
+#if defined _MSC_VER || (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 19901L))
   #include <stdint.h>
   #ifndef SCHED_UINT32
     #define SCHED_UINT32 uint32_t
@@ -353,7 +353,7 @@ sched_memset(void *ptr, sched_int c0, sched_size size)
     #define wsize sizeof(word)
     #define wmask (wsize - 1)
     unsigned char *dst = (unsigned char*)ptr;
-    unsigned c = 0;
+    unsigned long long c = 0;
     sched_size t = 0;
 
     if ((c = (unsigned char)c0) != 0) {
@@ -414,9 +414,9 @@ sched_zero_size(void *ptr, sched_size size)
 #if  defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
     #include <intrin.h>
     void _ReadWriteBarrier();
-    #pragma intrinsic(_ReadWriteBarrier);
-    #pragma intrinsic(_InterlockedCompareExchange);
-    #pragma intrinsic(_InterlockedExchangeAdd);
+    #pragma intrinsic(_ReadWriteBarrier)
+    #pragma intrinsic(_InterlockedCompareExchange)
+    #pragma intrinsic(_InterlockedExchangeAdd)
     #define SCHED_BASE_MEMORY_BARRIER_ACQUIRE() _ReadWriteBarrier()
     #define SCHED_BASE_MEMORY_BARRIER_RELEASE() _ReadWriteBarrier()
     #define SCHED_BASE_ALIGN(x) __declspec(align(x))
@@ -1119,3 +1119,29 @@ scheduler_stop(struct scheduler *s, int doWait)
 }
 
 #endif /* SCHED_IMPLEMENTATION */
+
+
+#ifdef SCHED_DEMO
+#include <stdio.h>
+static void parallel_task(void *pArg, struct scheduler *s, struct sched_task_partition p, sched_uint thread_num) {
+    /* Do something here, cann issue additional tasks into the scheduler */
+    puts(".");
+}
+int main(int argc, const char **argv) 
+{
+    void *memory;
+    sched_size needed_memory;
+
+    struct scheduler sched;
+    scheduler_init(&sched, &needed_memory, SCHED_DEFAULT, 0);
+    memory = calloc(needed_memory, 1);
+    scheduler_start(&sched, memory);
+    {
+        struct sched_task task;
+        scheduler_add(&sched, &task, parallel_task, NULL, 1, 1);
+        scheduler_join(&sched, &task);
+    }
+    scheduler_stop(&sched, 1);
+    free(memory);
+}
+#endif
