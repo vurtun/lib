@@ -1332,6 +1332,7 @@ lexer_read_on_line(struct lexer *lexer, struct lexer_token *token)
     if (!lexer_read(lexer, &tok)) {
         lexer->current = lexer->last;
         lexer->line = lexer->last_line;
+        return 0;
     }
     if (!tok.line_crossed) {
         *token = tok;
