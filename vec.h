@@ -1637,7 +1637,8 @@ xq_rotation_from_to(float *q, const float *u, const float *v)
             xv3_set(w, -u[1], u[0], 0.0f);
         else xv3_set(w, 0.0f, -u[2], u[1]);
     } else xv_cross(w, u , v, 3);
-    xq_rotation(q, real_part, w);
+
+    xq_set(q,w[0],w[1],w[2],real_part);
     xq_normeq(q);
 }
 
