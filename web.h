@@ -170,7 +170,13 @@ extern "C" {
 #endif
 #else
 #ifndef WBY_UINT_PTR
+
+#if defined(__i386__) || (!defined(_WIN64) && defined(_WIN32))
 #define WBY_UINT_PTR unsigned long
+#else
+#define WBY_UINT_PTR unsigned long long
+#endif
+
 #endif
 #endif
 typedef unsigned char wby_byte;
