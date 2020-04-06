@@ -534,7 +534,8 @@ sched_thread_create(sched_thread *returnid, void*(*StartFunc)(void*), void *arg)
 SCHED_INTERN sched_int
 sched_thread_term(sched_thread threadid)
 {
-    return (pthread_cancel(threadid) == 0);
+    pthread_cancel(threadid);
+    return (pthread_join(threadid, NULL) == 0);
 }
 
 SCHED_INTERN sched_uint
