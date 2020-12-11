@@ -42,11 +42,11 @@ DEFINES:
 
     MMX_MEMSET
         You can define this to 'memset' or your own memset replacement.
-        If not, mm_vec.h uses a naive (maybe inefficent) implementation.
+        If not, mm_vec.h uses a naive (maybe inefficient) implementation.
 
     MMX_MEMCPY
         You can define this to 'memcpy' or your own memcpy replacement.
-        If not, mm_vec.h uses a naive (maybe inefficent) implementation.
+        If not, mm_vec.h uses a naive (maybe inefficient) implementation.
 
     MMX_USE_DEGREES
         If this is set all angles inside the library, input as well as output,

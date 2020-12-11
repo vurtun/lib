@@ -67,7 +67,7 @@ DEFINES:
 
     LEXER_MEMSET
         You can define this to 'memset' or your own memset replacement.
-        If not lexer uses a naive (maybe inefficent) implementation.
+        If not lexer uses a naive (maybe inefficient) implementation.
 
 
 LIMITATIONS:

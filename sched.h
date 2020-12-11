@@ -36,7 +36,7 @@ DEFINE:
 
     SCHED_MEMSET
         You can define this to 'memset' or your own memset replacement.
-        If not, sched.h uses a naive (maybe inefficent) implementation.
+        If not, sched.h uses a naive (maybe inefficient) implementation.
 
     SCHED_INT32
     SCHED_UINT32
