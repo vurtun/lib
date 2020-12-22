@@ -4,16 +4,14 @@ My single header libraries for C/C++.
 
 |library | lastest version | category | LoC | license | description
 | --------------------- | ---- | -------- | --- | --- | --------------------------------
-|**lexer.h** | 1.00 | parser | 1155 | zlib | simple lexer for C-like languages
 |**json.h** | 1.00 | parser | 848 | zlib | non-allocating json parser
 |**sched.h** | 1.00 | multithreading | 699 | zlib | multithreaded task scheduler
-|**vec.h** | 0.02 | math | 2240 | zlib | vector math
 |**web.h** | 1.00 | network | 1455 | BSD |  lightweight webserver
 |**sdefl.h** | 1.00 | compression | 525 | public domain |  deflate compressor
 |**sinfl.h** | 1.00 | decompression | 320 | public domain |  deflate decompressor
 
-Total libraries: 7  
-Total lines of C code: 7137
+Total libraries: 5  
+Total lines of C code: 4487
 
 ## FAQ
 
