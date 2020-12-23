@@ -145,7 +145,7 @@ struct sdefl_codes {
   struct sdefl_code_words word;
   struct sdefl_lens len;
 };
-struct sdefl_seq {
+struct sdefl_seqt {
   int off, len;
 };
 struct sdefl {
@@ -154,7 +154,7 @@ struct sdefl {
   int prv[SDEFL_WIN_SIZ];
 
   int seq_cnt;
-  struct sdefl_seq seq[SDEFL_SEQ_SIZ];
+  struct sdefl_seqt seq[SDEFL_SEQ_SIZ];
   struct sdefl_freq freq;
   struct sdefl_codes cod;
 };
@@ -190,7 +190,7 @@ sdefl_ilog2(int n) {
   if (!n) return 0;
 #ifdef _MSC_VER
   unsigned long msbp = 0;
-  _BitScanReverse(&msbp, (unsignd long)n);
+  _BitScanReverse(&msbp, (unsigned long)n);
   return (int)msbp;
 #elif defined(__GNUC__) || defined(__clang__)
   return (int)sizeof(unsigned long) * CHAR_BIT - 1 - __builtin_clzl((unsigned long)n);
@@ -207,7 +207,6 @@ sdefl_ilog2(int n) {
   }
   #undef lt
 #endif
-  return 0;
 }
 static unsigned
 sdefl_uload32(const void *p) {
