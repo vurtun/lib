@@ -190,7 +190,7 @@ sdefl_ilog2(int n) {
   if (!n) return 0;
 #ifdef _MSC_VER
   unsigned long msbp = 0;
-  _BitScanReverse(&msbp, (unsignd long)n);
+  _BitScanReverse(&msbp, (unsigned long)n);
   return (int)msbp;
 #elif defined(__GNUC__) || defined(__clang__)
   return (int)sizeof(unsigned long) * CHAR_BIT - 1 - __builtin_clzl((unsigned long)n);
