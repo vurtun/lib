@@ -207,7 +207,6 @@ sdefl_ilog2(int n) {
   }
   #undef lt
 #endif
-  return 0;
 }
 static unsigned
 sdefl_uload32(const void *p) {
