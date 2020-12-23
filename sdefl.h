@@ -145,7 +145,7 @@ struct sdefl_codes {
   struct sdefl_code_words word;
   struct sdefl_lens len;
 };
-struct sdefl_seq {
+struct sdefl_seqt {
   int off, len;
 };
 struct sdefl {
@@ -154,7 +154,7 @@ struct sdefl {
   int prv[SDEFL_WIN_SIZ];
 
   int seq_cnt;
-  struct sdefl_seq seq[SDEFL_SEQ_SIZ];
+  struct sdefl_seqt seq[SDEFL_SEQ_SIZ];
   struct sdefl_freq freq;
   struct sdefl_codes cod;
 };
