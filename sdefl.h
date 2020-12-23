@@ -182,8 +182,6 @@ extern int zsdeflate(struct sdefl *s, void *o, const void *i, int n, int lvl);
 #define SDEFL_EOB               (256)
 
 #define sdefl_npow2(n) (1 << (sdefl_ilog2((n)-1) + 1))
-#define sdefl_blk_end(dst, s)                          \
-  sdefl_put(dst, s, (int)(s)->cod.word.lit[SDEFL_EOB], (s)->cod.len.lit[SDEFL_EOB])
 
 static int
 sdefl_ilog2(int n) {
@@ -579,7 +577,7 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
         s->freq.lit[in[i]]++;
         litlen++;
       }
-      while (run-- != 0) {
+      while (run-- > 0) {
         unsigned h = sdefl_hash32(&in[i]);
         s->prv[i&SDEFL_WIN_MSK] = s->tbl[h];
         s->tbl[h] = i, i += inc;
@@ -592,9 +590,8 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
     sdefl_flush(&q, s, blk_end == in_len, in);
   } while (i < in_len);
 
-  if (s->cnt) {
+  if (s->cnt)
     sdefl_put(&q, s, 0x00, 8 - s->cnt);
-  }
   return (int)(q - out);
 }
 extern int
