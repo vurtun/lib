@@ -1,4 +1,4 @@
-#if 0
+/*
 # Small Deflate
 `sdefl` is a small bare bone lossless compression library in ANSI C (ISO C90)
 which implements the Deflate (RFC 1951) compressed data format specification standard.
@@ -15,15 +15,19 @@ as needed to keep the implementation as concise as possible.
     - Deflate ~3.7 KB (~2.2KB compressed)
     - Inflate ~3.6 KB (~2.2KB compressed)
 
-## Usage
-For deflating add sdefl source and header into your project and include `sdefl.h`.
-To compress a block of memory call `sdeflate` with your data to compress and a
-memory block to write the compressed output into with size returned by `sdefl_bound`
+## Usage:
+This file behaves differently depending on what symbols you define
+before including it.
 
-For inflating add sinfl source and header into your project and include `sinfl.h`.
-To decompress a previously compressed block of memory call `sinflate`. Pass
-your compressed block along with its size and an allocated output buffer
-with size of the uncompressed block.
+Header-File mode:
+If you do not define `SDEFL_IMPLEMENTATION` before including this file, it
+will operate in header only mode. In this mode it declares all used structs
+and the API of the library without including the implementation of the library.
+
+Implementation mode:
+If you define `SDEFL_IMPLEMENTATION` before including this file, it will
+compile the implementation of the JSON parser. Make sure that you only include
+this file implementation in *one* C or C++ file to prevent collisions.
 
 ### Benchmark
 
@@ -104,8 +108,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------
 ```
-#endif
-
+*/
 #ifndef SDEFL_H_INCLUDED
 #define SDEFL_H_INCLUDED
 
