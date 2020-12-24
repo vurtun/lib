@@ -162,8 +162,7 @@ struct sinfl_gen {
 };
 static int
 sinfl_build_tbl(struct sinfl_gen *gen, unsigned *tbl, int tbl_bits,
-                const int *cnt)
-{
+                const int *cnt) {
   int tbl_end = 0;
   while (!(gen->cnt = cnt[gen->len])) {
     ++gen->len;
@@ -194,8 +193,7 @@ sinfl_build_tbl(struct sinfl_gen *gen, unsigned *tbl, int tbl_bits,
 }
 static void
 sinfl_build_subtbl(struct sinfl_gen *gen, unsigned *tbl, int tbl_bits,
-                   const int *cnt)
-{
+                   const int *cnt) {
   int sub_bits = 0;
   int sub_start = 0;
   int sub_prefix = -1;
@@ -407,8 +405,7 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
   return (int)(out-o);
 }
 extern int
-sinflate(void *out, const void *in, int size)
-{
+sinflate(void *out, const void *in, int size) {
   return sinfl_decompress((unsigned char*)out, (const unsigned char*)in, size);
 }
 static unsigned
