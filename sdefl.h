@@ -29,10 +29,10 @@ with size of the uncompressed block.
 
 | Compressor name         | Compression| Decompress.| Compr. size | Ratio |
 | ------------------------| -----------| -----------| ----------- | ----- |
-| sdefl 1.0 -0            |   127 MB/s |   201 MB/s |    40004116 | 39.88 |
-| sdefl 1.0 -1            |   111 MB/s |   216 MB/s |    38940674 | 38.82 |
-| sdefl 1.0 -5            |    45 MB/s |   230 MB/s |    36577183 | 36.46 |
-| sdefl 1.0 -7            |    38 MB/s |   233 MB/s |    36523781 | 36.41 |
+| sdefl 1.0 -0            |   127 MB/s |   226 MB/s |    40004116 | 39.88 |
+| sdefl 1.0 -1            |   111 MB/s |   251 MB/s |    38940674 | 38.82 |
+| sdefl 1.0 -5            |    45 MB/s |   264 MB/s |    36577183 | 36.46 |
+| sdefl 1.0 -7            |    38 MB/s |   264 MB/s |    36523781 | 36.41 |
 | zlib 1.2.11 -1          |    72 MB/s |   307 MB/s |    42298774 | 42.30 |
 | zlib 1.2.11 -6          |    24 MB/s |   313 MB/s |    36548921 | 36.55 |
 | zlib 1.2.11 -9          |    20 MB/s |   314 MB/s |    36475792 | 36.48 |
@@ -552,7 +552,7 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
       struct sdefl_match m = {0};
       int max_match = ((in_len-i)>SDEFL_MAX_MATCH) ? SDEFL_MAX_MATCH:(in_len-i);
       int nice_match = pref[lvl] < max_match ? pref[lvl] : max_match;
-      int run = 1, inc = 1;
+      int run = 1, inc = 1, run_inc;
       if (max_match > SDEFL_MIN_MATCH) {
         sdefl_fnd(&m, s, max_chain, max_match, in, i);
       }
@@ -577,10 +577,15 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
         s->freq.lit[in[i]]++;
         litlen++;
       }
-      while (run-- > 0) {
-        unsigned h = sdefl_hash32(&in[i]);
-        s->prv[i&SDEFL_WIN_MSK] = s->tbl[h];
-        s->tbl[h] = i, i += inc;
+      run_inc = run * inc;
+      if (in_len - (i + run_inc) > SDEFL_MIN_MATCH) {
+        while (run-- > 0) {
+          unsigned h = sdefl_hash32(&in[i]);
+          s->prv[i&SDEFL_WIN_MSK] = s->tbl[h];
+          s->tbl[h] = i, i += inc;
+        }
+      } else {
+        i += run_inc;
       }
     }
     if (litlen) {
@@ -655,6 +660,5 @@ sdefl_bound(int len) {
   int b = 128 + len + ((len / (31 * 1024)) + 1) * 5;
   return (a > b) ? a : b;
 }
-
-#endif
+#endif /* SDEFL_IMPLEMENTATION */
 

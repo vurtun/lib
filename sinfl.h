@@ -29,10 +29,10 @@ with size of the uncompressed block.
 
 | Compressor name         | Compression| Decompress.| Compr. size | Ratio |
 | ------------------------| -----------| -----------| ----------- | ----- |
-| sdefl 1.0 -0            |   127 MB/s |   201 MB/s |    40004116 | 39.88 |
-| sdefl 1.0 -1            |   111 MB/s |   216 MB/s |    38940674 | 38.82 |
-| sdefl 1.0 -5            |    45 MB/s |   230 MB/s |    36577183 | 36.46 |
-| sdefl 1.0 -7            |    38 MB/s |   233 MB/s |    36523781 | 36.41 |
+| sdefl 1.0 -0            |   127 MB/s |   226 MB/s |    40004116 | 39.88 |
+| sdefl 1.0 -1            |   111 MB/s |   251 MB/s |    38940674 | 38.82 |
+| sdefl 1.0 -5            |    45 MB/s |   264 MB/s |    36577183 | 36.46 |
+| sdefl 1.0 -7            |    38 MB/s |   264 MB/s |    36523781 | 36.41 |
 | zlib 1.2.11 -1          |    72 MB/s |   307 MB/s |    42298774 | 42.30 |
 | zlib 1.2.11 -6          |    24 MB/s |   313 MB/s |    36548921 | 36.55 |
 | zlib 1.2.11 -9          |    20 MB/s |   314 MB/s |    36475792 | 36.48 |
@@ -448,6 +448,5 @@ zsinflate(void *out, const void *mem, int size) {
     return -1;
   }
 }
-
 #endif
 
