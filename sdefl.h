@@ -26,7 +26,7 @@ and the API of the library without including the implementation of the library.
 
 Implementation mode:
 If you define `SDEFL_IMPLEMENTATION` before including this file, it will
-compile the implementation of the JSON parser. Make sure that you only include
+compile the implementation . Make sure that you only include
 this file implementation in *one* C or C++ file to prevent collisions.
 
 ### Benchmark
