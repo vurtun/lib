@@ -121,9 +121,9 @@ extern "C" {
 #define SINFL_OFF_TBL_SIZE 402
 
 struct sinfl {
-    int bits, bitcnt;
-    unsigned lits[SINFL_LIT_TBL_SIZE];
-    unsigned dsts[SINFL_OFF_TBL_SIZE];
+  int bits, bitcnt;
+  unsigned lits[SINFL_LIT_TBL_SIZE];
+  unsigned dsts[SINFL_OFF_TBL_SIZE];
 };
 extern int sinflate(void *out, const void *in, int size);
 extern int zsinflate(void *out, const void *in, int size);
@@ -281,6 +281,7 @@ sinfl_decode(const unsigned char **in, const unsigned char *end,
   int idx = s->bits & ((1 << bit_len) - 1);
   unsigned key = tbl[idx];
   if (key & 0x10) {
+    /* sub-table lookup */
     int len = key & 0x0f;
     sinfl_get(in, end, s, bit_len);
     idx = s->bits & ((1 << len)-1);
@@ -327,7 +328,8 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
       nlen = sinfl_get(&in,e,&s,16);
       in -= 2; s.bitcnt = 0;
 
-      if (len > (e-in) || !len) return (int)(out-o);
+      if (len > (e-in) || !len)
+        return (int)(out-o);
       memcpy(out, in, (size_t)len);
       in += len, out += len;
       state = hdr;
@@ -373,41 +375,43 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
     } break;
     case blk: {
       /* decompress block */
-      while (in < e || s.bitcnt) {
-        int i, sym = sinfl_decode(&in, e, &s, s.lits, 10);
-        if (sym > 256) {sym -= 257; /* match symbol */
-          {int len = sinfl_get(&in, e, &s, lbits[sym]) + lbase[sym];
-          int dsym = sinfl_decode(&in, e, &s, s.dsts, 8);
-          int offs = sinfl_get(&in, e, &s, dbits[dsym]) + dbase[dsym];
-          if (offs > (int)(out-o)) {
-            return (int)(out-o);
-          } else if (offs == 1) {
-            unsigned char c = *(out - offs);
-            unsigned long w = (c << 24) | (c << 16) | (c << 8) | c;
-            for (i = 0; i < len >> 2; ++i) {
-              memcpy(out, &w, 4);
-              out += 4;
-            }
-            len = len & 3;
-          } else if (offs >= 4) {
-            int wcnt = len >> 2;
-            for (i = 0; i < wcnt; ++i) {
-              unsigned long w = 0;
-              memcpy(&w, out - offs, 4);
-              memcpy(out, &w, 4);
-              out += 4;
-            }
-            len = len & 3;
+      int i, sym = sinfl_decode(&in, e, &s, s.lits, 10);
+      if (sym > 256) {sym -= 257; /* match symbol */
+        {int len = sinfl_get(&in, e, &s, lbits[sym]) + lbase[sym];
+        int dsym = sinfl_decode(&in, e, &s, s.dsts, 8);
+        int offs = sinfl_get(&in, e, &s, dbits[dsym]) + dbase[dsym];
+        if (offs > (int)(out-o)) {
+          return (int)(out-o);
+        } else if (offs == 1) {
+          /* rle match copying */
+          unsigned char c = *(out - offs);
+          unsigned long w = (c << 24) | (c << 16) | (c << 8) | c;
+          for (i = 0; i < len >> 2; ++i) {
+            memcpy(out, &w, 4);
+            out += 4;
           }
-          for (i = 0; i < len; ++i)
-            {*out = *(out-offs), out++;}
+          len = len & 3;
+        } else if (offs >= 4) {
+          /* copy match */
+          int wcnt = len >> 2;
+          for (i = 0; i < wcnt; ++i) {
+            unsigned long w = 0;
+            memcpy(&w, out - offs, 4);
+            memcpy(out, &w, 4);
+            out += 4;
           }
-        } else if (sym == 256) {
-          if (last) return (int)(out-o);
-          state = hdr;
-          break;
-        } else *out++ = (unsigned char)sym;
-      }
+          len = len & 3;
+        }
+        for (i = 0; i < len; ++i)
+          {*out = *(out-offs), out++;}
+        }
+      } else if (sym == 256) {
+        /* end of block */
+        if (last) return (int)(out-o);
+        state = hdr;
+        break;
+        /* literal */
+      } else *out++ = (unsigned char)sym;
     } break;}
   }
   return (int)(out-o);
