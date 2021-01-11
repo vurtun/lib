@@ -128,11 +128,11 @@ struct sinfl {
 extern int sinflate(void *out, const void *in, int size);
 extern int zsinflate(void *out, const void *in, int size);
 
-#endif /* SINFL_H_INCLUDED */
-
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* SINFL_H_INCLUDED */
 
 #ifdef SINFL_IMPLEMENTATION
 

@@ -439,8 +439,12 @@ sdefl_precode(struct sdefl_symcnt *cnt, unsigned *freqs, unsigned *items,
   } while (run_start != total);
   cnt->items = (int)(at - items);
 }
+struct sdefl_match_codes {
+  int ls, lc;
+  int dc, dx;
+};
 static void
-sdefl_match_codes(int *ls, int *lc, int *dx, int *dc, int dist, int len) {
+sdefl_match_codes(struct sdefl_match_codes *cod, int dist, int len) {
   static const short dxmax[] = {0,6,12,24,48,96,192,384,768,1536,3072,6144,12288,24576};
   static const unsigned char lslot[258+1] = {
     0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12,
@@ -459,10 +463,10 @@ sdefl_match_codes(int *ls, int *lc, int *dx, int *dc, int dist, int len) {
     27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
     27, 27, 28
   };
-  *ls = lslot[len];
-  *lc = 257 + *ls;
-  *dx = sdefl_ilog2(sdefl_npow2(dist) >> 2);
-  *dc = *dx ? ((*dx + 1) << 1) + (dist > dxmax[*dx]) : dist-1;
+  cod->ls = lslot[len];
+  cod->lc = 257 + cod->ls;
+  cod->dx = sdefl_ilog2(sdefl_npow2(dist) >> 2);
+  cod->dc = cod->dx ? ((cod->dx + 1) << 1) + (dist > dxmax[cod->dx]) : dist-1;
 }
 static void
 sdefl_match(unsigned char **dst, struct sdefl *s, int dist, int len) {
@@ -472,12 +476,12 @@ sdefl_match(unsigned char **dst, struct sdefl *s, int dist, int len) {
   static const short dmin[] = {1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,
       385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577};
 
-  int ls, lc, dx, dc;
-  sdefl_match_codes(&ls, &lc, &dx, &dc, dist, len);
-  sdefl_put(dst, s, (int)s->cod.word.lit[lc], s->cod.len.lit[lc]);
-  sdefl_put(dst, s, len - lmin[ls], lxn[ls]);
-  sdefl_put(dst, s, (int)s->cod.word.off[dc], s->cod.len.off[dc]);
-  sdefl_put(dst, s, dist - dmin[dc], dx);
+  struct sdefl_match_codes cod;
+  sdefl_match_codes(&cod, dist, len);
+  sdefl_put(dst, s, (int)s->cod.word.lit[cod.lc], s->cod.len.lit[cod.lc]);
+  sdefl_put(dst, s, len - lmin[cod.ls], lxn[cod.ls]);
+  sdefl_put(dst, s, (int)s->cod.word.off[cod.dc], s->cod.len.off[cod.dc]);
+  sdefl_put(dst, s, dist - dmin[cod.dc], cod.dx);
 }
 static void
 sdefl_flush(unsigned char **dst, struct sdefl *s, int is_last,
@@ -538,10 +542,10 @@ sdefl_seq(struct sdefl *s, int off, int len) {
 }
 static void
 sdefl_reg_match(struct sdefl *s, int off, int len) {
-  int ls, lc, dx, dc;
-  sdefl_match_codes(&ls, &lc, &dx, &dc, off, len);
-  s->freq.lit[lc]++;
-  s->freq.off[dc]++;
+  struct sdefl_match_codes cod;
+  sdefl_match_codes(&cod, off, len);
+  s->freq.lit[cod.lc]++;
+  s->freq.off[cod.dc]++;
 }
 struct sdefl_match {
   int off;
