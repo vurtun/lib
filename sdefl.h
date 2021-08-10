@@ -1,5 +1,4 @@
-/*
-# Small Deflate
+/*# Small Deflate
 `sdefl` is a small bare bone lossless compression library in ANSI C (ISO C90)
 which implements the Deflate (RFC 1951) compressed data format specification standard.
 It is mainly tuned to get as much speed and compression ratio from as little code
@@ -120,7 +119,7 @@ extern "C" {
 #define SDEFL_WIN_SIZ   SDEFL_MAX_OFF
 #define SDEFL_WIN_MSK   (SDEFL_WIN_SIZ-1)
 
-#define SDEFL_HASH_BITS 15
+#define SDEFL_HASH_BITS 19
 #define SDEFL_HASH_SIZ  (1 << SDEFL_HASH_BITS)
 #define SDEFL_HASH_MSK  (SDEFL_HASH_SIZ-1)
 
@@ -398,8 +397,8 @@ sdefl_precode(struct sdefl_symcnt *cnt, unsigned *freqs, unsigned *items,
     if (offlen[cnt->off - 1]) break;
 
   total = (unsigned)(cnt->lit + cnt->off);
-  memcpy(lens, litlen, sizeof(unsigned char) * cnt->lit);
-  memcpy(lens + cnt->lit, offlen, sizeof(unsigned char) * cnt->off);
+  memcpy(lens, litlen, sizeof(unsigned char) * (size_t)cnt->lit);
+  memcpy(lens + cnt->lit, offlen, sizeof(unsigned char) * (size_t)cnt->off);
   do {
     unsigned len = lens[run_start];
     unsigned run_end = run_start;

@@ -121,7 +121,10 @@ extern "C" {
 #define SINFL_OFF_TBL_SIZE 402
 
 struct sinfl {
-  int bits, bitcnt;
+  const unsigned char *bitptr;
+  unsigned long long bitbuf;
+  int bitcnt;
+
   unsigned lits[SINFL_LIT_TBL_SIZE];
   unsigned dsts[SINFL_OFF_TBL_SIZE];
 };
@@ -137,6 +140,7 @@ extern int zsinflate(void *out, const void *in, int size);
 #ifdef SINFL_IMPLEMENTATION
 
 #include <string.h> /* memcpy, memset */
+#include <assert.h> /* assert */
 
 static int
 sinfl_bsr(unsigned n) {
@@ -147,20 +151,40 @@ sinfl_bsr(unsigned n) {
   return 31 - __builtin_clz(n);
 #endif
 }
+static unsigned long long
+sinfl_read64(const void *p) {
+  unsigned long long n;
+  memcpy(&n, p, 8);
+  return n;
+}
+static void
+sinfl_refill(struct sinfl *s) {
+  s->bitbuf |= sinfl_read64(s->bitptr) << s->bitcnt;
+  s->bitptr += (63 - s->bitcnt) >> 3;
+  s->bitcnt |= 56; /* bitcount is in range [56,63] */
+}
 static int
-sinfl_get(const unsigned char **src, const unsigned char *end, struct sinfl *s,
-          int n) {
-  const unsigned char *in = *src;
-  int v = s->bits & ((1 << n)-1);
-  s->bits >>= n;
-  s->bitcnt = s->bitcnt - n;
-  s->bitcnt = s->bitcnt < 0 ? 0 : s->bitcnt;
-  while (s->bitcnt < 16 && in < end) {
-    s->bits |= (*in++) << s->bitcnt;
-    s->bitcnt += 8;
-  }
-  *src = in;
-  return v;
+sinfl_peek(struct sinfl *s, int cnt) {
+  assert(cnt >= 0 && cnt <= 56);
+  assert(cnt <= s->bitcnt);
+  return s->bitbuf & ((1ull << cnt) - 1);
+}
+static void
+sinfl_consume(struct sinfl *s, int cnt) {
+  assert(cnt <= s->bitcnt);
+  s->bitbuf >>= cnt;
+  s->bitcnt -= cnt;
+}
+static int
+sinfl__get(struct sinfl *s, int cnt) {
+  int res = sinfl_peek(s, cnt);
+  sinfl_consume(s, cnt);
+  return res;
+}
+static int
+sinfl_get(struct sinfl *s, int cnt) {
+  sinfl_refill(s);
+  return sinfl__get(s, cnt);
 }
 struct sinfl_gen {
   int len;
@@ -276,19 +300,19 @@ sinfl_build(unsigned *tbl, unsigned char *lens, int tbl_bits, int maxlen,
   }
 }
 static int
-sinfl_decode(const unsigned char **in, const unsigned char *end,
-             struct sinfl *s, const unsigned *tbl, int bit_len) {
-  int idx = s->bits & ((1 << bit_len) - 1);
+sinfl_decode(struct sinfl *s, const unsigned *tbl, int bit_len) {
+  sinfl_refill(s);
+  {int idx = sinfl_peek(s, bit_len);
   unsigned key = tbl[idx];
   if (key & 0x10) {
     /* sub-table lookup */
     int len = key & 0x0f;
-    sinfl_get(in, end, s, bit_len);
-    idx = s->bits & ((1 << len)-1);
+    sinfl_consume(s, bit_len);
+    idx = sinfl_peek(s, len);
     key = tbl[((key >> 16) & 0xffff) + (unsigned)idx];
   }
-  sinfl_get(in, end, s, key & 0x0f);
-  return (key >> 16) & 0x0fff;
+  sinfl_consume(s, key & 0x0f);
+  return (key >> 16) & 0x0fff;}
 }
 static int
 sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
@@ -308,13 +332,15 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
   struct sinfl s = {0};
   int last = 0;
 
-  sinfl_get(&in,e,&s,0); /* buffer input */
-  while (in < e || s.bitcnt) {
+  s.bitptr = in;
+  while (1) {
     switch (state) {
     case hdr: {
-      int type = 0; /* block header */
-      last = sinfl_get(&in,e,&s,1);
-      type = sinfl_get(&in,e,&s,2);
+      /* block header */
+      int type = 0;
+      sinfl_refill(&s);
+      last = sinfl__get(&s,1);
+      type = sinfl__get(&s,2);
 
       switch (type) {default: return (int)(out-o);
       case 0x00: state = stored; break;
@@ -322,10 +348,12 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
       case 0x02: state = dyn; break;}
     } break;
     case stored: {
-      int len, nlen; /* uncompressed block */
-      sinfl_get(&in,e,&s,s.bitcnt & 7);
-      len = sinfl_get(&in,e,&s,16);
-      nlen = sinfl_get(&in,e,&s,16);
+      /* uncompressed block */
+      int len, nlen;
+      sinfl_refill(&s);
+      sinfl__get(&s,s.bitcnt & 7);
+      len = sinfl__get(&s,16);
+      nlen = sinfl__get(&s,16);
       in -= 2; s.bitcnt = 0;
 
       if (len > (e-in) || !len)
@@ -353,33 +381,38 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
         int n, i;
         unsigned hlens[SINFL_PRE_TBL_SIZE];
         unsigned char nlens[19] = {0}, lens[288+32];
-        int nlit = 257 + sinfl_get(&in,e,&s,5);
-        int ndist = 1 + sinfl_get(&in,e,&s,5);
-        int nlen = 4 + sinfl_get(&in,e,&s,4);
+
+        sinfl_refill(&s);
+        {int nlit = 257 + sinfl__get(&s,5);
+        int ndist = 1 + sinfl__get(&s,5);
+        int nlen = 4 + sinfl__get(&s,4);
         for (n = 0; n < nlen; n++)
-          nlens[order[n]] = (unsigned char)sinfl_get(&in,e,&s,3);
+          nlens[order[n]] = (unsigned char)sinfl_get(&s,3);
         sinfl_build(hlens, nlens, 7, 7, 19);
 
         /* decode code lengths */
         for (n = 0; n < nlit + ndist;) {
-          int sym = sinfl_decode(&in, e, &s, hlens, 7);
+          int sym = sinfl_decode(&s, hlens, 7);
           switch (sym) {default: lens[n++] = (unsigned char)sym; break;
-          case 16: for (i=3+sinfl_get(&in,e,&s,2);i;i--,n++) lens[n]=lens[n-1]; break;
-          case 17: for (i=3+sinfl_get(&in,e,&s,3);i;i--,n++) lens[n]=0; break;
-          case 18: for (i=11+sinfl_get(&in,e,&s,7);i;i--,n++) lens[n]=0; break;}
+          case 16: for (i=3+sinfl_get(&s,2);i;i--,n++) lens[n]=lens[n-1]; break;
+          case 17: for (i=3+sinfl_get(&s,3);i;i--,n++) lens[n]=0; break;
+          case 18: for (i=11+sinfl_get(&s,7);i;i--,n++) lens[n]=0; break;}
         }
         /* build lit/dist tables */
         sinfl_build(s.lits, lens, 10, 15, nlit);
         sinfl_build(s.dsts, lens + nlit, 8, 15, ndist);
-        state = blk;
+        state = blk;}
     } break;
     case blk: {
       /* decompress block */
-      int i, sym = sinfl_decode(&in, e, &s, s.lits, 10);
-      if (sym > 256) {sym -= 257; /* match symbol */
-        {int len = sinfl_get(&in, e, &s, lbits[sym]) + lbase[sym];
-        int dsym = sinfl_decode(&in, e, &s, s.dsts, 8);
-        int offs = sinfl_get(&in, e, &s, dbits[dsym]) + dbase[dsym];
+      int i, sym = sinfl_decode(&s, s.lits, 10);
+      if (sym < 256) {
+        /* literal */
+        *out++ = (unsigned char)sym;
+      } else if (sym > 256) {sym -= 257; /* match symbol */
+        {int len = sinfl_get(&s, lbits[sym]) + lbase[sym];
+        int dsym = sinfl_decode(&s, s.dsts, 8);
+        int offs = sinfl_get(&s, dbits[dsym]) + dbase[dsym];
         if (offs > (int)(out-o)) {
           return (int)(out-o);
         } else if (offs == 1) {
@@ -405,13 +438,12 @@ sinfl_decompress(unsigned char *out, const unsigned char *in, int size) {
         for (i = 0; i < len; ++i)
           {*out = *(out-offs), out++;}
         }
-      } else if (sym == 256) {
+      } else {
         /* end of block */
         if (last) return (int)(out-o);
         state = hdr;
         break;
-        /* literal */
-      } else *out++ = (unsigned char)sym;
+      }
     } break;}
   }
   return (int)(out-o);
