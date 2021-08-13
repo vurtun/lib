@@ -151,7 +151,7 @@ extern int zsinflate(void *out, int cap, const void *in, int size);
 #endif
 
 #ifndef SINFL_NO_SIMD
-#ifdef __x86_64__
+#if __x86_64__ || defined(_WIN32) || defined(_WIN64)
   #include <emmintrin.h>
   #define sinfl_char16 __m128i
   #define sinfl_char16_ld(p) _mm_loadu_si128((const __m128i *)(void*)(p))
@@ -183,19 +183,6 @@ sinfl_read64(const void *p) {
   memcpy(&n, p, 8);
   return n;
 }
-static unsigned char*
-sinfl_write64(unsigned char *dst, unsigned long long w) {
-  memcpy(dst, &w, 8);
-  return dst + 8;
-}
-static void
-sinfl_copy64(unsigned char **dst, unsigned char **src) {
-  unsigned long long n;
-  memcpy(&n, *src, 8);
-  memcpy(*dst, &n, 8);
-  *dst += 8, *src += 8;
-}
-
 #ifndef SINFL_NO_SIMD
 static unsigned char*
 sinfl_write128(unsigned char *dst, sinfl_char16 w) {
@@ -208,8 +195,20 @@ sinfl_copy128(unsigned char **dst, unsigned char **src) {
   sinfl_char16_str(*dst, n);
   *dst += 16, *src += 16;
 }
+#else
+static unsigned char*
+sinfl_write64(unsigned char *dst, unsigned long long w) {
+  memcpy(dst, &w, 8);
+  return dst + 8;
+}
+static void
+sinfl_copy64(unsigned char **dst, unsigned char **src) {
+  unsigned long long n;
+  memcpy(&n, *src, 8);
+  memcpy(*dst, &n, 8);
+  *dst += 8, *src += 8;
+}
 #endif
-
 static void
 sinfl_refill(struct sinfl *s) {
   s->bitbuf |= sinfl_read64(s->bitptr) << s->bitcnt;
@@ -475,14 +474,18 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
         out = out + len;
 
 #ifndef SINFL_NO_SIMD
-        if (sinfl_likely(oe - out >= 16)) {
+        if (sinfl_likely(oe - out >= 16 * 3)) {
           if (offs >= 16) {
             /* copy match */
+            sinfl_copy128(&dst, &src);
+            sinfl_copy128(&dst, &src);
             do sinfl_copy128(&dst, &src);
             while (dst < out);
           } else if (offs == 1) {
             /* rle match copying */
             sinfl_char16 w = sinfl_char16_char(src[0]);
+            dst = sinfl_write128(dst, w);
+            dst = sinfl_write128(dst, w);
             do dst = sinfl_write128(dst, w);
             while (dst < out);
           } else {
