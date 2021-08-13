@@ -71,7 +71,7 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_REALTIME, &compr_ended);
 
         clock_gettime(CLOCK_REALTIME, &decompr_started);
-        n = sinflate(decomp, comp, len);
+        n = sinflate(decomp, (int)size, comp, len);
         clock_gettime(CLOCK_REALTIME, &decompr_ended);
 
         double compr_time = profiler_time(compr_started, compr_ended);
