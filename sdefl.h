@@ -471,9 +471,6 @@ sdefl_match_codes(struct sdefl_match_codes *cod, int dist, int len) {
   cod->dx = sdefl_ilog2(sdefl_npow2(dist) >> 2);
   cod->dc = cod->dx ? ((cod->dx + 1) << 1) + (dist > dxmax[cod->dx]) : dist-1;
 }
-
-#include <stdio.h>
-
 static void
 sdefl_match(unsigned char **dst, struct sdefl *s, int dist, int len) {
   static const char lxn[] = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
