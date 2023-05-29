@@ -638,7 +638,9 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
     }
     sdefl_flush(&q, s, blk_end == in_len, in);
   } while (i < in_len);
-  sdefl_put(&q, s, 0x00, 8 - s->bitcnt);
+  if (s->bitcnt) {
+    sdefl_put(&q, s, 0x00, 8 - s->bitcnt);
+  }
   return (int)(q - out);
 }
 extern int
