@@ -462,11 +462,18 @@ sdefl_match_codes(struct sdefl_match_codes *cod, int dist, int len) {
     27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
     27, 27, 28
   };
+  assert(len <= 258);
+  assert(dist <= 32768);
   cod->ls = lslot[len];
   cod->lc = 257 + cod->ls;
+  assert(cod->lc <= 285);
+
   cod->dx = sdefl_ilog2(sdefl_npow2(dist) >> 2);
   cod->dc = cod->dx ? ((cod->dx + 1) << 1) + (dist > dxmax[cod->dx]) : dist-1;
 }
+
+#include <stdio.h>
+
 static void
 sdefl_match(unsigned char **dst, struct sdefl *s, int dist, int len) {
   static const char lxn[] = {0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0};
@@ -501,7 +508,9 @@ sdefl_flush(unsigned char **dst, struct sdefl *s, int is_last,
   sdefl_precode(&symcnt, freqs, items, s->cod.len.lit, s->cod.len.off);
   sdefl_huff(lens, codes, freqs, SDEFL_PRE_MAX, SDEFL_PRE_CODES);
   for (item_cnt = SDEFL_PRE_MAX; item_cnt > 4; item_cnt--) {
-    if (lens[perm[item_cnt - 1]]) break;
+    if (lens[perm[item_cnt - 1]]){
+      break;
+    }
   }
   /* block header */
   sdefl_put(dst, s, is_last ? 0x01 : 0x00, 1); /* block */
@@ -509,8 +518,9 @@ sdefl_flush(unsigned char **dst, struct sdefl *s, int is_last,
   sdefl_put(dst, s, symcnt.lit - 257, 5);
   sdefl_put(dst, s, symcnt.off - 1, 5);
   sdefl_put(dst, s, item_cnt - 4, 4);
-  for (i = 0; i < item_cnt; ++i)
+  for (i = 0; i < item_cnt; ++i) {
     sdefl_put(dst, s, lens[perm[i]], 3);
+  }
   for (i = 0; i < symcnt.items; ++i) {
     unsigned sym = items[i] & 0x1F;
     sdefl_put(dst, s, (int)codes[sym], lens[sym]);
@@ -521,12 +531,14 @@ sdefl_flush(unsigned char **dst, struct sdefl *s, int is_last,
   }
   /* block sequences */
   for (i = 0; i < s->seq_cnt; ++i) {
-    if (s->seq[i].off >= 0)
+    if (s->seq[i].off >= 0) {
       for (j = 0; j < s->seq[i].len; ++j) {
         int c = in[s->seq[i].off + j];
         sdefl_put(dst, s, (int)s->cod.word.lit[c], s->cod.len.lit[c]);
       }
-    else sdefl_match(dst, s, -s->seq[i].off, s->seq[i].len);
+    } else {
+      sdefl_match(dst, s, -s->seq[i].off, s->seq[i].len);
+    }
   }
   sdefl_put(dst, s, (int)(s)->cod.word.lit[SDEFL_EOB], (s)->cod.len.lit[SDEFL_EOB]);
   memset(&s->freq, 0, sizeof(s->freq));
@@ -579,12 +591,13 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
   for (n = 0; n < SDEFL_HASH_SIZ; ++n) {
     s->tbl[n] = SDEFL_NIL;
   }
-  do {int blk_end = i + SDEFL_BLK_MAX < in_len ? i + SDEFL_BLK_MAX : in_len;
+  do {int blk_end = ((i + SDEFL_BLK_MAX) < in_len) ? (i + SDEFL_BLK_MAX) : in_len;
     while (i < blk_end) {
       struct sdefl_match m = {0};
-      int max_match = ((in_len-i)>SDEFL_MAX_MATCH) ? SDEFL_MAX_MATCH:(in_len-i);
+      int left = blk_end - i;
+      int max_match = (left >= SDEFL_MAX_MATCH) ? SDEFL_MAX_MATCH : left;
       int nice_match = pref[lvl] < max_match ? pref[lvl] : max_match;
-      int run = 1, inc = 1, run_inc;
+      int run = 1, inc = 1, run_inc = 0;
       if (max_match > SDEFL_MIN_MATCH) {
         sdefl_fnd(&m, s, max_chain, max_match, in, i);
       }
@@ -615,9 +628,11 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
           unsigned h = sdefl_hash32(&in[i]);
           s->prv[i&SDEFL_WIN_MSK] = s->tbl[h];
           s->tbl[h] = i, i += inc;
+          assert(i <= blk_end);
         }
       } else {
         i += run_inc;
+        assert(i <= blk_end);
       }
     }
     if (litlen) {
@@ -626,9 +641,7 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
     }
     sdefl_flush(&q, s, blk_end == in_len, in);
   } while (i < in_len);
-
-  if (s->bitcnt)
-    sdefl_put(&q, s, 0x00, 8 - s->bitcnt);
+  sdefl_put(&q, s, 0x00, 8 - s->bitcnt);
   return (int)(q - out);
 }
 extern int

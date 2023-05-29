@@ -479,6 +479,10 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
           break;
         }
         /* match */
+        if (sym >= 286) {
+          /* length codes 286 and 287 must not appear in compressed data */
+          return (int)(out-o);
+        }
         sym -= 257;
         {int len = sinfl__get(&s, lbits[sym]) + lbase[sym];
         int dsym = sinfl_decode(&s, s.dsts, 8);
