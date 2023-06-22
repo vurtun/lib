@@ -506,9 +506,10 @@ sdefl_blk_type(const struct sdefl *s, int blk_len, int pre_item_len,
 }
 static void
 sdefl_put16(unsigned char **dst, unsigned short x) {
-  unsigned short *val = (unsigned short*)(void*)(*dst);
-  *val = (unsigned short)x;
-  *dst += 2;
+  unsigned char *val = *dst;
+  val[0] = (unsigned char)(x & 0xff);
+  val[1] = (unsigned char)(x >> 8);
+  *dst = val + 2;
 }
 static void
 sdefl_match(unsigned char **dst, struct sdefl *s, int dist, int len) {
