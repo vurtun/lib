@@ -440,12 +440,12 @@ sdefl_precode(struct sdefl_symcnt *cnt, unsigned *freqs, unsigned *items,
   } while (run_start != total);
   cnt->items = (int)(at - items);
 }
-struct sdefl_match_codes {
+struct sdefl_match_codest {
   int ls, lc;
   int dc, dx;
 };
 static void
-sdefl_match_codes(struct sdefl_match_codes *cod, int dist, int len) {
+sdefl_match_codes(struct sdefl_match_codest *cod, int dist, int len) {
   static const short dxmax[] = {0,6,12,24,48,96,192,384,768,1536,3072,6144,12288,24576};
   static const unsigned char lslot[258+1] = {
     0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12,
@@ -518,7 +518,7 @@ sdefl_match(unsigned char **dst, struct sdefl *s, int dist, int len) {
   static const short dmin[] = {1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,
       385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577};
 
-  struct sdefl_match_codes cod;
+  struct sdefl_match_codest cod;
   sdefl_match_codes(&cod, dist, len);
   sdefl_put(dst, s, (int)s->cod.word.lit[cod.lc], s->cod.len.lit[cod.lc]);
   sdefl_put(dst, s, len - lmin[cod.ls], lxn[cod.ls]);
@@ -613,7 +613,7 @@ sdefl_seq(struct sdefl *s, int off, int len) {
 }
 static void
 sdefl_reg_match(struct sdefl *s, int off, int len) {
-  struct sdefl_match_codes cod;
+  struct sdefl_match_codest cod;
   sdefl_match_codes(&cod, off, len);
 
   assert(cod.lc < SDEFL_SYM_MAX);
@@ -787,4 +787,3 @@ sdefl_bound(int len) {
   return bound;
 }
 #endif /* SDEFL_IMPLEMENTATION */
-
