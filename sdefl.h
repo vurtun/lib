@@ -71,7 +71,7 @@ Results on the [Silesia compression corpus](http://sun.aei.polsl.pl/~sdeor/index
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
-Copyright (c) 2020 Micha Mettke
+Copyright (c) 2020-2023 Micha Mettke
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
 the Software without restriction, including without limitation the rights to
@@ -125,7 +125,7 @@ extern "C" {
 
 #define SDEFL_MIN_MATCH 4
 #define SDEFL_BLK_MAX   (256*1024)
-#define SDEFL_SEQ_SIZ   ((SDEFL_BLK_MAX + SDEFL_MIN_MATCH)/SDEFL_MIN_MATCH)
+#define SDEFL_SEQ_SIZ   ((SDEFL_BLK_MAX+2)/3)
 
 #define SDEFL_SYM_MAX   (288)
 #define SDEFL_OFF_MAX   (32)
