@@ -701,7 +701,7 @@ json_deq(struct json_token *tok)
 {
     /* dequotes a string token */
     if (tok->str[0] == '\"' && tok->len >= 2)
-        tok->str++; tok->len-=2;
+        tok->str++, tok->len-=2;
 }
 JSON_INTERN json_number
 json_ipow(int base, unsigned exp)
