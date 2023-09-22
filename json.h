@@ -851,7 +851,7 @@ JSON_API struct json_iter
 json_begin(const char *str, int len)
 {
     struct json_iter iter = JSON_ITER_NULL;
-    iter.src = str; iter.len = len;
+    iter.src = str, iter.len = len;
     return iter;
 }
 JSON_API struct json_iter
@@ -958,7 +958,7 @@ json_read(struct json_token *obj, const struct json_iter* prev)
                 iter.src = cur;
                 iter.len = len;
                 return iter;
-            } cur--; len++;
+            } cur--, len++;
         } break;
         case JSON_STATE_UTF8_2: {
             iter.go = json_go_utf8;
@@ -1230,7 +1230,7 @@ json_query(struct json_token *toks, int count, const char *path)
                 array.len = 0;
 
                 /* iterate over each array element and find the correct index */
-                iter++; i++;
+                iter++, i++;
                 for (j = 0; j < n; ++j) {
                     if (iter->type == JSON_ARRAY || iter->type == JSON_OBJECT) {
                         i = i + (iter->sub) + 1;
