@@ -46,7 +46,7 @@ EXAMPLES:*/
 #if 0
     /* Parser example */
     const char *json = "{...}";
-    size_t len = strlen(json);
+    int len = strlen(json);
 
     /* load content into token array */
     struct json_parser p = {0};
@@ -57,7 +57,7 @@ EXAMPLES:*/
     struct json_token *t0 = json_query(p.toks, p.cnt, "map.entity[4].position");
 
     /* query string */
-    size_t size;
+    int size;
     char buffer[64];
     json_query_string(buffer, 64, &size, p.toks, p.cnt, "map.entity[4].name");
 
@@ -66,7 +66,7 @@ EXAMPLES:*/
     json_query_number(&num, p.toks, p.cnt, "map.soldier[2].position.x");
 
     /* query type */
-    int type0 = json_query_number(p.toks, p.cnt, "map.soldier[2]");
+    int type0 = json_query_type(p.toks, p.cnt, "map.soldier[2]");
 
     /* sub-queries */
     json_token *entity = json_query(p.toks, p.cnt, "map.entity[4]");
@@ -97,8 +97,8 @@ EXAMPLES:*/
     struct json_token *ent = json_array_begin(a);
     for (i = 0; i < a->children && ent; ++i) {
         struct json_token *pos = json_query(ent, ent->sub, "position");
-        /*... */
-        ent = json_array_next(ent);}
+        /* ... */
+        ent = json_array_next(ent);
     }
 #endif
 
