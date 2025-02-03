@@ -151,18 +151,18 @@ extern int zsinflate(void *out, int cap, const void *in, int size);
 #endif
 
 #ifndef SINFL_NO_SIMD
-#if defined(__x86_64__) || defined(_WIN32) || defined(_WIN64)
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
+  #include <arm_neon.h>
+  #define sinfl_char16           uint8x16_t
+  #define sinfl_char16_ld(p)     vld1q_u8((const unsigned char*)(p))
+  #define sinfl_char16_str(d, v) vst1q_u8((unsigned char*)(d), v)
+  #define sinfl_char16_char(c)   vdupq_n_u8(c)
+#elif defined(__x86_64__) || defined(_WIN32) || defined(_WIN64)
   #include <emmintrin.h>
   #define sinfl_char16 __m128i
   #define sinfl_char16_ld(p) _mm_loadu_si128((const __m128i *)(void*)(p))
   #define sinfl_char16_str(d,v)  _mm_storeu_si128((__m128i*)(void*)(d), v)
   #define sinfl_char16_char(c) _mm_set1_epi8(c)
-#elif defined(__arm__) || defined(__aarch64__)
-  #include <arm_neon.h>
-  #define sinfl_char16 uint8x16_t
-  #define sinfl_char16_ld(p) vld1q_u8((const unsigned char*)(p))
-  #define sinfl_char16_str(d,v) vst1q_u8((unsigned char*)(d), v)
-  #define sinfl_char16_char(c) vdupq_n_u8(c)
 #else
   #define SINFL_NO_SIMD
 #endif
@@ -171,8 +171,9 @@ extern int zsinflate(void *out, int cap, const void *in, int size);
 static int
 sinfl_bsr(unsigned n) {
 #ifdef _MSC_VER
-  _BitScanReverse(&n, n);
-  return n;
+  unsigned long r = 0;
+  _BitScanReverse(&r, n);
+  return int(r);
 #elif defined(__GNUC__) || defined(__clang__)
   return 31 - __builtin_clz(n);
 #endif
