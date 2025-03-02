@@ -174,7 +174,7 @@ sinfl_bsr(unsigned n) {
   unsigned long r = 0;
   _BitScanReverse(&r, n);
   return int(r);
-#elif defined(__GNUC__) || defined(__clang__)
+#else // defined(__GNUC__) || defined(__clang__) || defined(__TINYC__)
   return 31 - __builtin_clz(n);
 #endif
 }
