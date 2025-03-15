@@ -788,7 +788,7 @@ zsdeflate(struct sdefl *s, void *out, const void *in, int n, int lvl) {
 extern int
 sdefl_bound(int len) {
   int max_blocks = 1 + sdefl_div_round_up(len, SDEFL_RAW_BLK_SIZE);
-  int bound = 5 * max_blocks + len + 1 + 4 + 8;
+  int bound = 5 * max_blocks + len + 1 + 4 + 8 + 3;
   return bound;
 }
 
