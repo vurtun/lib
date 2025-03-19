@@ -173,7 +173,7 @@ extern "C" {
 #endif
 
 static int
-sinfl_bsr(unsigned n) {
+sinfl_bsr(unsigned long n) {
 #ifdef _MSC_VER
   unsigned long r = 0;
   _BitScanReverse(&r, n);
