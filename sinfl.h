@@ -142,6 +142,10 @@ extern int zsinflate(void *out, int cap, const void *in, int size);
 #include <string.h> /* memcpy, memset */
 #include <assert.h> /* assert */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
 #define sinfl_likely(x)       __builtin_expect((x),1)
 #define sinfl_unlikely(x)     __builtin_expect((x),0)
@@ -413,6 +417,7 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
       if (len > (e - s.bitptr))
         return (int)(out-o);
 
+      if (sinfl_unlikely(out + len > oe)) return -2;
       memcpy(out, s.bitptr, (size_t)len);
       s.bitptr += len, out += len;
       if (last) return (int)(out-o);
@@ -469,12 +474,11 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
         sym = sinfl_decode(&s, s.lits, 10);
         if (sym < 256) {
           /* literal */
-          if (sinfl_unlikely(out >= oe)) {
-            return (int)(out-o);
-          }
+          if (sinfl_unlikely(out >= oe)) return -2;
           *out++ = (unsigned char)sym;
           sym = sinfl_decode(&s, s.lits, 10);
           if (sym < 256) {
+            if (sinfl_unlikely(out >= oe)) return -2;
             *out++ = (unsigned char)sym;
             continue;
           }
@@ -495,10 +499,8 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
         int dsym = sinfl_decode(&s, s.dsts, 8);
         int offs = sinfl__get(&s, dbits[dsym]) + dbase[dsym];
         unsigned char *dst = out, *src = out - offs;
-        if (sinfl_unlikely(offs > (int)(out-o))) {
-          return (int)(out-o);
-        }
         out = out + len;
+        if (sinfl_unlikely(out > oe)) return -2;
 
 #ifndef SINFL_NO_SIMD
         if (sinfl_likely(oe - out >= 16 * 3)) {
@@ -602,7 +604,8 @@ zsinflate(void *out, int cap, const void *mem, int size) {
   const unsigned char *in = (const unsigned char*)mem;
   if (size >= 6) {
     const unsigned char *eob = in + size - 4;
-    int n = sinfl_decompress((unsigned char*)out, cap, in + 2u, size);
+    int n = sinfl_decompress((unsigned char*)out, cap, in + 2, size - 6);
+    if (n < 0) return -2;
     unsigned a = sinfl_adler32(1u, (unsigned char*)out, n);
     unsigned h = eob[0] << 24 | eob[1] << 16 | eob[2] << 8 | eob[3] << 0;
     return a == h ? n : -1;
@@ -610,5 +613,9 @@ zsinflate(void *out, int cap, const void *mem, int size) {
     return -1;
   }
 }
+
+#ifdef __cplusplus
+}
 #endif
 
+#endif /* SINFL_IMPLEMENTATION */
