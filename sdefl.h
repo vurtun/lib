@@ -209,17 +209,11 @@ sdefl_ilog2(int n) {
 #elif defined(__GNUC__) || defined(__clang__)
   return (int)sizeof(unsigned long) * CHAR_BIT - 1 - __builtin_clzl((unsigned long)n);
 #else
-  #define lt(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
-  static const char tbl[256] = {
-    0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,lt(4), lt(5), lt(5), lt(6), lt(6), lt(6), lt(6),
-    lt(7), lt(7), lt(7), lt(7), lt(7), lt(7), lt(7), lt(7)};
-  int tt, t;
-  if ((tt = (n >> 16))) {
-    return (t = (tt >> 8)) ? 24 + tbl[t] : 16 + tbl[tt];
-  } else {
-    return (t = (n >> 8)) ? 8 + tbl[t] : tbl[n];
-  }
-  #undef lt
+  static const unsigned char multiply_de_bruijn_bit_position[32] = {
+    0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
+    8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31};
+  v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16;
+  return multiply_de_bruijn_bit_position[(unsigned int)(v * 0x07C4ACDDU) >> 27];
 #endif
 }
 static unsigned
