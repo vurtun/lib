@@ -673,6 +673,9 @@ sdefl_compr(struct sdefl *s, unsigned char *out, const unsigned char *in,
   for (n = 0; n < SDEFL_HASH_SIZ; ++n) {
     s->tbl[n] = SDEFL_NIL;
   }
+  s->seq_cnt = 0;
+  memset(&s->freq, 0, sizeof(sdefl_freq));
+
   do {int blk_begin = i;
     int blk_end = ((i + SDEFL_BLK_MAX) < in_len) ? (i + SDEFL_BLK_MAX) : in_len;
     while (i < blk_end) {
