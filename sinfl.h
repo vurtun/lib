@@ -142,6 +142,10 @@ extern int zsinflate(void *out, int cap, const void *in, int size);
 #include <string.h> /* memcpy, memset */
 #include <assert.h> /* assert */
 
+#ifdef _MSC_VER
+#include <intrin.h> /* _BitScanReverse */
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

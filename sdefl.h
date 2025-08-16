@@ -180,6 +180,10 @@ extern int zsdeflate(struct sdefl *s, void *o, const void *i, int n, int lvl);
 #include <string.h> /* memcpy */
 #include <limits.h> /* CHAR_BIT */
 
+#ifdef _MSC_VER
+#include <intrin.h> /* _BitScanReverse */
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
