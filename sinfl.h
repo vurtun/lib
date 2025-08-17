@@ -542,8 +542,8 @@ sinfl_decompress(unsigned char *out, int cap, const unsigned char *in, int size)
           } else if (offs == 1) {
             /* rle match copying */
             unsigned int c = src[0];
-            unsigned int hw = (c << 24u) | (c << 16u) | (c << 8u) | (unsigned)c;
-            unsigned long long w = (unsigned long long)hw << 32llu | hw;
+            unsigned long long hw = (c << 24) | (c << 16) | (c << 8) | c;
+            unsigned long long w = (hw << 32) | hw;
             dst = sinfl_write64(dst, w);
             dst = sinfl_write64(dst, w);
             do dst = sinfl_write64(dst, w);
