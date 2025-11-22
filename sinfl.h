@@ -174,7 +174,7 @@ extern "C" {
 
 static int
 sinfl_bsr(unsigned long n) {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
   unsigned long r = 0;
   _BitScanReverse(&r, n);
   return (int)(r);

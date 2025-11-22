@@ -202,7 +202,7 @@ extern "C" {
 static int
 sdefl_ilog2(int n) {
   if (!n) return 0;
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
   unsigned long msbp = 0;
   _BitScanReverse(&msbp, (unsigned long)n);
   return (int)msbp;
