@@ -2,7 +2,7 @@
 
 My single header libraries for C/C++.
 
-|library | lastest version | category | LoC | license | description
+|library | latest version | category | LoC | license | description
 | --------------------- | ---- | -------- | --- | --- | --------------------------------
 |**json.h** | 1.00 | parser | 848 | zlib | non-allocating json parser
 |**sched.h** | 1.00 | multithreading | 699 | zlib | multithreaded task scheduler
